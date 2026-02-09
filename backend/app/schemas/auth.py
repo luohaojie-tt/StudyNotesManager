@@ -9,16 +9,36 @@ from pydantic import BaseModel, EmailStr, Field, field_validator
 class UserRegister(BaseModel):
     """User registration request schema."""
     email: EmailStr
-    password: str = Field(..., min_length=8, max_length=100)
+    password: str = Field(..., min_length=12, max_length=100)
     full_name: str = Field(..., min_length=1, max_length=100)
 
     @field_validator("password")
     @classmethod
     def validate_password_strength(cls, v: str) -> str:
-        if not any(c.isalpha() for c in v):
-            raise ValueError("Password must contain at least one letter")
+        """Validate password meets strong security requirements.
+        
+        Requirements:
+        - Minimum 12 characters
+        - At least one lowercase letter
+        - At least one uppercase letter
+        - At least one digit
+        - At least one special character
+        """
+        if len(v) < 12:
+            raise ValueError("Password must be at least 12 characters long")
+        
+        if not any(c.islower() for c in v):
+            raise ValueError("Password must contain at least one lowercase letter")
+        
+        if not any(c.isupper() for c in v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        
         if not any(c.isdigit() for c in v):
             raise ValueError("Password must contain at least one digit")
+        
+        if not any(c in "!@#$%^&*()_+-=[]{}|;:,.<>?`~" for c in v):
+            raise ValueError("Password must contain at least one special character")
+        
         return v
 
 

@@ -34,8 +34,9 @@ class Settings(BaseSettings):
     # JWT
     JWT_SECRET_KEY: str = Field(default="")
     JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(default=30)
+    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(default=7)
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = Field(default=10080)  # 7 days in minutes
 
     # CORS
     CORS_ORIGINS: Union[str, List[str]] = Field(
