@@ -140,11 +140,25 @@ docker-compose up -d
 
 ## 👥 团队协作
 
-### Git工作流
+### Git工作流自动化 ⭐
+
+**teammates使用git-workflow skill自动执行Git操作**：
+
+```bash
+# 创建分支
+git-workflow: create branch backend-dev user-auth
+
+# 提交代码
+git-workflow: commit feat 添加用户注册API
+
+# 创建PR
+git-workflow: pr 实现用户认证系统
+```
+
+**文档参考**：
 - 分支策略：[docs/09-workflow/GIT_WORKFLOW.md](./docs/09-workflow/GIT_WORKFLOW.md)
 - 工作规范：[docs/09-workflow/TEAMMATES_GUIDELINES.md](./docs/09-workflow/TEAMMATES_GUIDELINES.md)
-- Commit规范：Conventional Commits
-- Code Review：必须通过审查才能合并
+- Skill文档：[.claude/skills/git-workflow.md](./.claude/skills/git-workflow.md)
 
 ### 团队成员
 - **team-lead**: 协调、决策、进度跟踪
