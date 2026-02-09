@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
 from app.core.database import get_db
-from app.services.mindmap_service import mindmap_service
+from app.services.mindmap_service import MindmapService
 from app.services.deepseek_service import DeepSeekService
 
 router = APIRouter(prefix="/api/mindmaps", tags=["Mindmaps"])
@@ -47,6 +47,7 @@ async def generate_mindmap(
             status_code=400,
             detail="max_levels must be between 1 and 10"
         )
+    
     user, _ = current_user
     try:
         # Get note content
@@ -61,37 +62,26 @@ async def generate_mindmap(
         if not note:
             raise HTTPException(status_code=404, detail="Note not found")
 
-        # Generate mindmap using DeepSeek
-        deepseek = DeepSeekService()
-        mindmap_structure = await deepseek.generate_mindmap(
+        # Generate mindmap using MindmapService
+        mindmap_service = MindmapService(db)
+        mindmap = await mindmap_service.generate_mindmap(
+            note_id=uuid.UUID(note_id),
+            user_id=user.id,
             note_content=note.content or note.ocr_text or "",
             note_title=note.title,
-            max_levels=max_levels,
         )
-        await deepseek.close()
-
-        # Save mindmap to database
-        from app.models.mindmap import Mindmap
-
-        new_mindmap = Mindmap(
-            user_id=user.id,
-            note_id=uuid.UUID(note_id),
-            structure=mindmap_structure,
-            ai_model="deepseek-chat",
-            version=1,
-        )
-        db.add(new_mindmap)
-        await db.commit()
-        await db.refresh(new_mindmap)
+        await mindmap_service.close()
 
         return {
-            "id": str(new_mindmap.id),
-            "noteId": str(new_mindmap.note_id),
-            "structure": new_mindmap.structure,
-            "aiModel": new_mindmap.ai_model,
-            "version": new_mindmap.version,
-            "createdAt": new_mindmap.created_at.isoformat(),
+            "id": str(mindmap.id),
+            "noteId": str(mindmap.note_id),
+            "structure": mindmap.structure,
+            "aiModel": mindmap.ai_model,
+            "version": mindmap.version,
+            "createdAt": mindmap.created_at.isoformat(),
         }
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate mindmap: {str(e)}")
 
@@ -124,6 +114,7 @@ async def get_mindmap_by_note(
         "noteId": str(mindmap.note_id),
         "structure": mindmap.structure,
         "aiModel": mindmap.ai_model,
+        "mapType": mindmap.map_type,
         "version": mindmap.version,
         "createdAt": mindmap.created_at.isoformat(),
     }
@@ -137,15 +128,12 @@ async def get_mindmap(
 ):
     """Get a mindmap by ID."""
     user, _ = current_user
-    from app.models.mindmap import Mindmap
-    from sqlalchemy import select
-
-    result = await db.execute(
-        select(Mindmap)
-        .where(Mindmap.id == uuid.UUID(mindmap_id))
-        .where(Mindmap.user_id == user.id)
+    mindmap_service = MindmapService(db)
+    mindmap = await mindmap_service.get_mindmap(
+        mindmap_id=uuid.UUID(mindmap_id),
+        user_id=user.id,
     )
-    mindmap = result.scalar_one_or_none()
+    await mindmap_service.close()
 
     if not mindmap:
         raise HTTPException(status_code=404, detail="Mindmap not found")
@@ -155,6 +143,7 @@ async def get_mindmap(
         "noteId": str(mindmap.note_id),
         "structure": mindmap.structure,
         "aiModel": mindmap.ai_model,
+        "mapType": mindmap.map_type,
         "version": mindmap.version,
         "createdAt": mindmap.created_at.isoformat(),
     }
@@ -169,30 +158,114 @@ async def update_mindmap(
 ):
     """Update mindmap structure (e.g., after manual edits)."""
     user, _ = current_user
-    from app.models.mindmap import Mindmap
-    from sqlalchemy import select
+    mindmap_service = MindmapService(db)
+    
+    try:
+        updated_mindmap = await mindmap_service.update_mindmap(
+            mindmap_id=uuid.UUID(mindmap_id),
+            user_id=user.id,
+            new_structure=structure,
+        )
+        await mindmap_service.close()
+    except ValueError as e:
+        await mindmap_service.close()
+        raise HTTPException(status_code=400, detail=str(e))
 
-    result = await db.execute(
-        select(Mindmap)
-        .where(Mindmap.id == uuid.UUID(mindmap_id))
-        .where(Mindmap.user_id == user.id)
-    )
-    mindmap = result.scalar_one_or_none()
-
-    if not mindmap:
+    if not updated_mindmap:
         raise HTTPException(status_code=404, detail="Mindmap not found")
 
-    # Increment version
-    mindmap.version += 1
-    mindmap.structure = structure
-    await db.commit()
-    await db.refresh(mindmap)
+    return {
+        "id": str(updated_mindmap.id),
+        "noteId": str(updated_mindmap.note_id),
+        "structure": updated_mindmap.structure,
+        "aiModel": updated_mindmap.ai_model,
+        "mapType": updated_mindmap.map_type,
+        "version": updated_mindmap.version,
+        "createdAt": updated_mindmap.created_at.isoformat(),
+    }
+
+
+@router.delete("/{mindmap_id}", status_code=204)
+async def delete_mindmap(
+    mindmap_id: str,
+    current_user: tuple = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Delete a mindmap."""
+    user, _ = current_user
+    mindmap_service = MindmapService(db)
+    success = await mindmap_service.delete_mindmap(
+        mindmap_id=uuid.UUID(mindmap_id),
+        user_id=user.id,
+    )
+    await mindmap_service.close()
+
+    if not success:
+        raise HTTPException(status_code=404, detail="Mindmap not found")
+
+
+@router.get("/{mindmap_id}/versions")
+async def get_mindmap_versions(
+    mindmap_id: str,
+    current_user: tuple = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get all versions of a mindmap."""
+    user, _ = current_user
+    mindmap_service = MindmapService(db)
+    versions = await mindmap_service.get_mindmap_versions(
+        mindmap_id=uuid.UUID(mindmap_id),
+        user_id=user.id,
+    )
+    await mindmap_service.close()
 
     return {
-        "id": str(mindmap.id),
-        "noteId": str(mindmap.note_id),
-        "structure": mindmap.structure,
-        "aiModel": mindmap.ai_model,
-        "version": mindmap.version,
-        "createdAt": mindmap.created_at.isoformat(),
+        "versions": [
+            {
+                "id": str(v.id),
+                "noteId": str(v.note_id),
+                "version": v.version,
+                "mapType": v.map_type,
+                "aiModel": v.ai_model,
+                "createdAt": v.created_at.isoformat(),
+            }
+            for v in versions
+        ]
+    }
+
+
+@router.get("/{mindmap_id}/knowledge-points")
+async def get_knowledge_points(
+    mindmap_id: str,
+    current_user: tuple = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Get knowledge points extracted from a mindmap."""
+    user, _ = current_user
+    mindmap_service = MindmapService(db)
+    
+    try:
+        points = await mindmap_service.get_knowledge_points(
+            mindmap_id=uuid.UUID(mindmap_id),
+            user_id=user.id,
+        )
+        await mindmap_service.close()
+    except ValueError as e:
+        await mindmap_service.close()
+        raise HTTPException(status_code=404, detail=str(e))
+
+    return {
+        "knowledgePoints": [
+            {
+                "id": str(p.id),
+                "nodeId": p.node_id,
+                "nodePath": p.node_path,
+                "text": p.text,
+                "level": p.level,
+                "parentNode": p.parent_node_id,
+                "description": p.description,
+                "keywords": p.keywords,
+            }
+            for p in points
+        ]
     }
