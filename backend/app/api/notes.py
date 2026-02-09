@@ -24,11 +24,34 @@ async def upload_note(
     db: AsyncSession = Depends(get_db),
 ):
     """Upload a note file with OCR recognition."""
+    from app.core.config import settings
+    
     user, _ = current_user
     try:
         file_content = await file.read()
         file_size = len(file_content)
         content_type = file.content_type
+        
+        # Validate file size
+        if file_size > settings.MAX_UPLOAD_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File size exceeds maximum allowed size of {settings.MAX_UPLOAD_SIZE} bytes",
+            )
+        
+        # Validate file type
+        if not file.filename:
+            raise HTTPException(
+                status_code=400,
+                detail="Filename is required",
+            )
+        
+        file_ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+        if file_ext not in settings.ALLOWED_EXTENSIONS:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File type '{file_ext}' is not allowed. Allowed types: {', '.join(settings.ALLOWED_EXTENSIONS)}",
+            )
         
         # Upload to OSS
         file_url = await oss_service.upload_file(
@@ -40,8 +63,16 @@ async def upload_note(
         # OCR recognition
         ocr_text = None
         ocr_confidence = None
-        if content_type.startswith("image/"):
+        if content_type and content_type.startswith("image/"):
             ocr_text, ocr_confidence = await ocr_service.recognize_text_accurate(file_content)
+        
+        # Determine file type
+        if content_type and content_type.startswith("image/"):
+            file_type = "image"
+        elif content_type and "pdf" in content_type.lower():
+            file_type = "pdf"
+        else:
+            file_type = "text"
         
         # Create note
         from app.schemas.note import NoteCreate
@@ -53,7 +84,7 @@ async def upload_note(
             ocr_text=ocr_text,
             category_id=uuid.UUID(category_id) if category_id else None,
             tags=[tag.strip() for tag in tags.split(",")] if tags else [],
-            metadata={"original_filename": file.filename, "file_size": file_size},
+            meta_data={"original_filename": file.filename, "file_size": file_size},
         )
         
         note_service = NoteService(db)
@@ -63,8 +94,10 @@ async def upload_note(
             note=NoteResponse.model_validate(note),
             ocr_confidence=ocr_confidence,
             file_size=file_size,
-            content_type=content_type,
+            content_type=content_type or "application/octet-stream",
         )
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500,
@@ -147,3 +180,45 @@ async def toggle_favorite(
         raise HTTPException(status_code=404, detail="Note not found")
     
     return NoteResponse.model_validate(note)
+
+
+@router.post("/ocr")
+async def recognize_text(
+    file: UploadFile = File(...),
+    current_user: tuple = Depends(get_current_active_user),
+):
+    """Recognize text from image using OCR."""
+    from app.schemas.note import OCRResponse
+    
+    user, _ = current_user
+    
+    # Validate file type
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=400,
+            detail="Only image files are supported for OCR",
+        )
+    
+    try:
+        file_content = await file.read()
+        
+        # OCR recognition
+        text, confidence = await ocr_service.recognize_text_accurate(file_content)
+        
+        if text is None:
+            raise HTTPException(
+                status_code=500,
+                detail="OCR recognition failed",
+            )
+        
+        return OCRResponse(
+            text=text,
+            confidence=confidence,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"OCR recognition failed: {str(e)}",
+        )

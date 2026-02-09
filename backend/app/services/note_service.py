@@ -35,16 +35,26 @@ class NoteService:
         Returns:
             Created note
         """
+        # Determine file type from metadata or URL
+        file_type = "text"
+        if note_data.metadata:
+            original_filename = note_data.metadata.get("original_filename", "")
+            if original_filename.endswith((".jpg", ".jpeg", ".png", ".gif", ".bmp")):
+                file_type = "image"
+            elif original_filename.endswith(".pdf"):
+                file_type = "pdf"
+        
         new_note = Note(
             user_id=user_id,
             title=note_data.title,
             content=note_data.content,
+            file_type=file_type,
             file_url=note_data.file_url,
             thumbnail_url=note_data.thumbnail_url,
             ocr_text=note_data.ocr_text,
             category_id=note_data.category_id,
             tags=note_data.tags,
-            metadata=note_data.metadata,
+            meta_data=note_data.meta_data,
         )
 
         self.db.add(new_note)

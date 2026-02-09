@@ -2,7 +2,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, Numeric, ARRAY
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, Numeric, ARRAY, Boolean
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 try:
     from pgvector.sqlalchemy import Vector
@@ -40,6 +40,12 @@ class Note(Base):
     # Category
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True)
 
+    # Tags
+    tags = Column(ARRAY(String), default=list)
+
+    # Favorite
+    is_favorited = Column(Boolean, default=False)
+
     # Statistics
     view_count = Column(Integer, default=0)
     mindmap_count = Column(Integer, default=0)
@@ -48,8 +54,8 @@ class Note(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
-    # Metadata
-    metadata = Column(JSONB, default=dict)
+    # Metadata (use meta_data to avoid SQLAlchemy reserved word)
+    meta_data = Column(JSONB, default=dict)
 
     # Relationships
     user = relationship("User", back_populates="notes")

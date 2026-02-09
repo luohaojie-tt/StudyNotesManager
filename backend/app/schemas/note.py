@@ -21,7 +21,7 @@ class NoteCreate(NoteBase):
     file_url: Optional[str] = None
     thumbnail_url: Optional[str] = None
     ocr_text: Optional[str] = None
-    metadata: dict = Field(default_factory=dict)
+    meta_data: dict = Field(default_factory=dict)
 
 
 class NoteUpdate(BaseModel):
@@ -31,7 +31,7 @@ class NoteUpdate(BaseModel):
     content: Optional[str] = None
     category_id: Optional[UUID] = None
     tags: Optional[list[str]] = None
-    metadata: Optional[dict] = None
+    meta_data: Optional[dict] = None
 
 
 class NoteResponse(BaseModel):
@@ -46,7 +46,7 @@ class NoteResponse(BaseModel):
     ocr_text: Optional[str] = None
     category_id: Optional[UUID] = None
     tags: list[str]
-    metadata: dict
+    meta_data: dict
     is_favorited: bool
     created_at: datetime
     updated_at: datetime
@@ -73,3 +73,10 @@ class NoteUploadResponse(BaseModel):
     ocr_confidence: Optional[float] = None
     file_size: int
     content_type: str
+
+
+class OCRResponse(BaseModel):
+    """OCR recognition response schema."""
+
+    text: str
+    confidence: Optional[float] = None
