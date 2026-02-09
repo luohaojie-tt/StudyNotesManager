@@ -25,6 +25,7 @@ from app.schemas.quiz import (
     QuizStatsResponse,
     QuizUpdateRequest,
     QuizUpdateResponse,
+    SubmitAnswersRequest,
 )
 from app.services.quiz_generation_service import QuizGenerationService
 from app.services.quiz_grading_service import QuizGradingService
@@ -133,8 +134,6 @@ async def list_quizzes(
         query = query.where(Quiz.difficulty == difficulty_filter)
 
     # Get total count
-    from sqlalchemy import func
-
     count_query = select(func.count()).select_from(query.subquery())
     total_result = await db.execute(count_query)
     total = total_result.scalar() or 0
@@ -566,8 +565,6 @@ async def get_quiz_stats(
     completed_quizzes = completed_result.scalar() or 0
 
     # Get all sessions for score calculation
-    from sqlalchemy import func
-
     sessions_result = await db.execute(
         select(QuizSession.score, QuizSession.correct_count, QuizSession.total_questions).where(
             QuizSession.user_id == user.id, QuizSession.status == "completed"
@@ -592,30 +589,3 @@ async def get_quiz_stats(
         total_questions_answered=total_questions,
         correct_answers_rate=round(correct_rate, 2),
     )
-
-    user, _ = current_user
-    from app.models.quiz import Quiz
-    from sqlalchemy import select
-
-    result = await db.execute(
-        select(Quiz)
-        .where(Quiz.user_id == user.id)
-        .order_by(Quiz.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-    )
-    quizzes = result.scalars().all()
-
-    return {
-        "quizzes": [
-            {
-                "id": str(q.id),
-                "noteId": str(q.note_id),
-                "title": q.title,
-                "questionCount": q.question_count,
-                "createdAt": q.created_at.isoformat(),
-            }
-            for q in quizzes
-        ],
-        "total": len(quizzes),
-    }
