@@ -173,7 +173,7 @@ class MindmapService:
 
         try:
             # Validate new structure
-            self.deepseek._validate_mindmap_structure(
+            self._validate_mindmap_structure(
                 new_structure,
                 settings.MINDMAP_MAX_LEVELS,
             )
@@ -287,6 +287,33 @@ class MindmapService:
             .order_by(KnowledgePoint.node_path)
         )
         return list(result.scalars().all())
+
+
+    def _validate_mindmap_structure(
+        self,
+        structure: Dict[str, Any],
+        max_levels: int,
+        current_level: int = 1,
+    ) -> None:
+        """Validate mindmap structure.
+
+        Args:
+            structure: Mindmap structure
+            max_levels: Maximum allowed levels
+            current_level: Current level being validated
+
+        Raises:
+            ValueError: If structure is invalid
+        """
+        required_keys = {"id", "text", "children"}
+        if not all(key in structure for key in required_keys):
+            raise ValueError(f"Invalid node structure, missing keys: {required_keys}")
+
+        if current_level > max_levels:
+            raise ValueError(f"Mindmap exceeds maximum depth of {max_levels}")
+
+        for child in structure.get("children", []):
+            self._validate_mindmap_structure(child, max_levels, current_level + 1)
 
     async def close(self) -> None:
         """Close service connections."""

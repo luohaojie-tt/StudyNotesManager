@@ -60,6 +60,11 @@ class Settings(BaseSettings):
     # OpenAI
     OPENAI_API_KEY: str = ""
 
+    # Mindmap Generation
+    MINDMAP_MAX_LEVELS: int = 5
+    MAX_TOKENS_PER_NOTE: int = 8000
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/v1"
+
     # File Upload
     MAX_UPLOAD_SIZE: int = 10485760  # 10MB
     ALLOWED_EXTENSIONS: Union[str, List[str]] = Field(default="jpg,jpeg,png,pdf")
