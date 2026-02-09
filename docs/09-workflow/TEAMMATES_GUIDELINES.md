@@ -354,27 +354,131 @@ npm test -- --coverage
 3. ✅ 重构代码（REFACTOR）
 4. ✅ 确保测试通过
 
-### 4. Code Review流程
+### 4. Code Review流程（🔴 CRITICAL - 强制执行）
+
+#### ⚠️ 严重警告
+
+**从项目开始到2026-02-09，所有代码提交都没有经过Code Review！**
+
+这是一个**严重的流程违反**，已导致：
+- ❌ 多个CRITICAL级别安全漏洞进入代码库
+- ❌ 代码质量问题未得到及时纠正
+- ❌ 违反了团队规范和Git工作流
+
+**详细报告**: `CODE_REVIEW_VIOLATION_REPORT.md`
+
+---
+
+#### 🔴 强制要求（必须遵守）
+
+**绝对禁止**:
+- ❌ 直接在develop/master/test分支提交
+- ❌ teammates直接要求team-lead commit代码
+- ❌ team-lead跳过code review直接合并
+- ❌ 任何未经审查的代码合并
+
+**必须执行的流程**:
 
 ```
-1. 创建Pull Request
-   ↓
-2. 填写PR模板（必须完整填写）
-   ↓
-3. code-reviewer自动审查
-   ↓
-4. 标记问题（CRITICAL/HIGH/MEDIUM/LOW）
-   ↓
-5. 开发者修复问题
-   ↓
-6. 审查通过后合并
+teammates工作流程：
+1. git checkout -b frontend-dev/feature-name
+2. 开发和测试
+3. git push origin frontend-dev/feature-name
+4. 创建Pull Request
+5. 填写PR模板（必须完整填写）
+6. 在30分钟报告中包含PR链接
+
+team-lead工作流程：
+1. 检查teammates是否创建了PR
+2. 使用code-reviewer agent审查代码
+3. 标记问题（CRITICAL/HIGH/MEDIUM/LOW）
+4. 要求teammates修复CRITICAL和HIGH问题
+5. 验证修复后重新审查
+6. 审查通过后合并（Squash and Merge）
+7. 删除feature分支
 ```
 
-**必须修复的问题**:
-- 🔴 CRITICAL: 安全漏洞（SQL注入、XSS等）
-- 🟠 HIGH: 重大bug、性能问题
-- 🟡 MEDIUM: 代码质量问题
+#### Code Review检查清单
+
+**team-lead必须检查**:
+- [ ] 是否创建了feature分支？
+- [ ] 是否创建了Pull Request？
+- [ ] 是否使用了code-reviewer agent？
+- [ ] 是否有CRITICAL级别问题？（必须修复）
+- [ ] 是否有HIGH级别问题？（应当修复）
+- [ ] 测试是否通过？
+- [ ] 覆盖率是否>80%？
+
+**teammates必须确保**:
+- [ ] 在feature分支上开发
+- [ ] 创建了Pull Request
+- [ ] 填写了PR模板
+- [ ] 代码通过了本地测试
+- [ ] 在30分钟报告中包含PR状态
+
+#### Code Review工具
+
+**使用code-reviewer agent**:
+```python
+Task(
+  subagent_type="code-reviewer",
+  prompt="请审查以下PR的代码...",
+  description="Review PR #123"
+)
+```
+
+**审查重点**:
+- 🔴 CRITICAL: 安全漏洞（SQL注入、XSS、CSRF等）
+- 🟠 HIGH: 重大bug、性能问题、数据泄露
+- 🟡 MEDIUM: 代码质量、设计问题
 - 🟢 LOW: 代码风格、注释
+
+#### 违规后果
+
+**对于teammates**:
+```
+第1次: ⚠️ 警告 + 重新教育规范
+第2次: 🔄 任务重新分配 + 扣除信誉
+第3次: ❌ 从团队移除
+```
+
+**对于team-lead**:
+```
+第1次: ⚠️ 书面警告 + 改进计划
+第2次: 🔄 暂停team-lead职责
+第3次: ❌ 解除team-lead职务
+```
+
+#### 必须修复的问题
+
+**合并前必须修复**:
+- 🔴 **CRITICAL**: 安全漏洞
+  - SQL注入、XSS、CSRF
+  - 认证绕过、权限提升
+  - 敏感数据泄露
+  - AI prompt注入
+
+**本次迭代必须修复**:
+- 🟠 **HIGH**: 重大bug
+  - 类型不一致
+  - 数据库连接泄漏
+  - 性能问题
+  - 业务逻辑错误
+
+**建议修复**:
+- 🟡 **MEDIUM**: 代码质量
+- 🟢 **LOW**: 代码风格
+
+#### Pre-commit Hook强制检查
+
+**防止直接在主分支提交**:
+```bash
+# .git/hooks/pre-commit
+# 检查是否在feature分支上
+# 如果在develop/master/test，拒绝提交
+```
+
+**实施状态**: ⏳ 待配置
 
 ---
 
