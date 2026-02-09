@@ -48,3 +48,11 @@ class UserResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class UserWithTokenResponse(UserResponse):
+    """User response with tokens schema."""
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+    expires_in: int = 900

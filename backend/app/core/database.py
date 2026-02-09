@@ -13,13 +13,21 @@ if database_url.startswith("postgresql://"):
     database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
 # Create async engine
-engine = create_async_engine(
-    database_url,
-    echo=settings.DEBUG,
-    pool_pre_ping=True,
-    pool_size=10,
-    max_overflow=20,
-)
+# SQLite doesn't support pool_size and max_overflow
+if database_url.startswith("sqlite"):
+    engine_kwargs = {
+        "echo": settings.DEBUG,
+        "pool_pre_ping": True,
+    }
+else:
+    engine_kwargs = {
+        "echo": settings.DEBUG,
+        "pool_pre_ping": True,
+        "pool_size": 10,
+        "max_overflow": 20,
+    }
+
+engine = create_async_engine(database_url, **engine_kwargs)
 
 # Create async session factory
 AsyncSessionLocal = sessionmaker(

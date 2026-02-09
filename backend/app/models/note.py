@@ -2,8 +2,14 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, Decimal, ForeignKey, Integer, String, Text
-from sqlalchemy.dialects.postgresql import JSONB, UUID, VECTOR
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, Numeric, ARRAY
+from sqlalchemy.dialects.postgresql import JSONB, UUID
+try:
+    from pgvector.sqlalchemy import Vector
+except ImportError:
+    # Fallback if pgvector not installed
+    from sqlalchemy import ARRAY
+    Vector = ARRAY
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -26,10 +32,10 @@ class Note(Base):
 
     # OCR results
     ocr_text = Column(Text, nullable=True)
-    ocr_confidence = Column(Decimal(3, 2), nullable=True)
+    ocr_confidence = Column(Numeric(3, 2), nullable=True)
 
     # Vector embedding
-    embedding = Column(VECTOR(1536), nullable=True)
+    embedding = Column(Vector(1536), nullable=True)
 
     # Category
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True)
