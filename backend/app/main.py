@@ -15,6 +15,7 @@ from app.api.mistakes import router as mistakes_router
 from app.api.quizzes import router as quizzes_router
 from app.api.mindmaps import router as mindmaps_router
 from app.api.analytics import router as analytics_router
+from app.api.health import router as health_router
 from app.core.config import get_settings
 from app.core.database import engine, Base
 from app.utils.logging import setup_logging
@@ -66,6 +67,7 @@ app.add_middleware(
 app.add_middleware(CSRFMiddleware)
 
 # Include routers
+app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(notes_router)
 app.include_router(mistakes_router)
@@ -80,14 +82,8 @@ async def root() -> dict:
         "message": "StudyNotesManager API",
         "version": settings.APP_VERSION,
         "status": "running",
-    }
-
-@app.get("/health")
-async def health_check() -> dict:
-    """Health check endpoint."""
-    return {
-        "status": "healthy",
-        "service": settings.APP_NAME,
+        "docs": "/docs",
+        "health": "/health",
     }
 
 if __name__ == "__main__":

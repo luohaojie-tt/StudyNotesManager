@@ -146,9 +146,19 @@ async def upload_note(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(
+            "Failed to upload note",
+            extra={
+                "user_id": str(user.id),
+                "filename": file.filename if file.filename else "unknown",
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "action": "note_upload_error"
+            }
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to upload note: {str(e)}",
+            detail="Failed to process file upload. Please try again or contact support if the problem persists.",
         )
 
 @router.get("")
@@ -265,7 +275,16 @@ async def recognize_text(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(
+            "OCR recognition failed",
+            extra={
+                "user_id": str(user.id),
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "action": "ocr_recognition_error"
+            }
+        )
         raise HTTPException(
             status_code=500,
-            detail=f"OCR recognition failed: {str(e)}",
+            detail="Text recognition failed. Please ensure the image is clear and try again.",
         )

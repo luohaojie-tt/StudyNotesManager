@@ -3,6 +3,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from loguru import logger
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,6 +11,7 @@ from app.api.dependencies import get_current_active_user
 from app.core.database import get_db
 from app.services.mindmap_service import MindmapService
 from app.services.deepseek_service import DeepSeekService
+from app.services.cache_service import cache_service
 
 router = APIRouter(prefix="/api/mindmaps", tags=["Mindmaps"])
 
@@ -41,14 +43,34 @@ async def generate_mindmap(
         note_id: Note ID
         max_levels: Maximum hierarchy levels (1-10)
     """
+    user, _ = current_user
+    
+    logger.info(
+        "Mindmap generation requested",
+        extra={
+            "user_id": str(user.id),
+            "note_id": note_id,
+            "max_levels": max_levels,
+            "action": "mindmap_generate_start"
+        }
+    )
+    
     # Validate max_levels parameter
     if not 1 <= max_levels <= 10:
+        logger.warning(
+            "Invalid max_levels parameter",
+            extra={
+                "user_id": str(user.id),
+                "note_id": note_id,
+                "max_levels": max_levels,
+                "action": "mindmap_generate_validation_failed"
+            }
+        )
         raise HTTPException(
             status_code=400,
             detail="max_levels must be between 1 and 10"
         )
     
-    user, _ = current_user
     try:
         # Get note content
         from app.models.note import Note
@@ -60,17 +82,84 @@ async def generate_mindmap(
         note = result.scalar_one_or_none()
 
         if not note:
+            logger.warning(
+                "Note not found for mindmap generation",
+                extra={
+                    "user_id": str(user.id),
+                    "note_id": note_id,
+                    "action": "mindmap_generate_note_not_found"
+                }
+            )
             raise HTTPException(status_code=404, detail="Note not found")
 
-        # Generate mindmap using MindmapService
-        mindmap_service = MindmapService(db)
-        mindmap = await mindmap_service.generate_mindmap(
-            note_id=uuid.UUID(note_id),
-            user_id=user.id,
-            note_content=note.content or note.ocr_text or "",
-            note_title=note.title,
+        logger.debug(
+            "Note found, starting AI generation",
+            extra={
+                "user_id": str(user.id),
+                "note_id": note_id,
+                "note_title": note.title,
+                "content_length": len(note.content or note.ocr_text or ""),
+                "action": "mindmap_generate_ai_start"
+            }
         )
-        await mindmap_service.close()
+
+        note_content = note.content or note.ocr_text or ""
+        
+        # Check cache first
+        cached_structure = await cache_service.get_cached_mindmap(
+            note_content=note_content,
+            max_levels=max_levels
+        )
+        
+        if cached_structure:
+            # Use cached structure - still save to DB for user
+            logger.info(
+                "Using cached mindmap structure",
+                extra={
+                    "user_id": str(user.id),
+                    "note_id": note_id,
+                    "action": "mindmap_using_cache"
+                }
+            )
+            
+            mindmap_service = MindmapService(db)
+            mindmap = await mindmap_service.generate_mindmap(
+                note_id=uuid.UUID(note_id),
+                user_id=user.id,
+                note_content=note_content,
+                note_title=note.title,
+                _cached_structure=cached_structure,
+            )
+            await mindmap_service.close()
+        else:
+            # Generate new mindmap
+            mindmap_service = MindmapService(db)
+            mindmap = await mindmap_service.generate_mindmap(
+                note_id=uuid.UUID(note_id),
+                user_id=user.id,
+                note_content=note_content,
+                note_title=note.title,
+            )
+            await mindmap_service.close()
+            
+            # Cache the generated structure
+            await cache_service.cache_mindmap(
+                note_content=note_content,
+                max_levels=max_levels,
+                mindmap_structure=mindmap.structure,
+            )
+
+        logger.info(
+            "Mindmap generated successfully",
+            extra={
+                "user_id": str(user.id),
+                "note_id": note_id,
+                "mindmap_id": str(mindmap.id),
+                "ai_model": mindmap.ai_model,
+                "version": mindmap.version,
+                "action": "mindmap_generate_success"
+            }
+        )
 
         return {
             "id": str(mindmap.id),
@@ -81,9 +170,28 @@ async def generate_mindmap(
             "createdAt": mindmap.created_at.isoformat(),
         }
     except ValueError as e:
+        logger.error(
+            "Validation error during mindmap generation",
+            extra={
+                "user_id": str(user.id),
+                "note_id": note_id,
+                "error": str(e),
+                "action": "mindmap_generate_validation_error"
+            }
+        )
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate mindmap: {str(e)}")
+        logger.error(
+            "Failed to generate mindmap",
+            extra={
+                "user_id": str(user.id),
+                "note_id": note_id,
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "action": "mindmap_generate_error"
+            }
+        )
+        raise HTTPException(status_code=500, detail="Failed to generate mindmap")
 
 
 @router.get("/note/{note_id}")
@@ -94,6 +202,16 @@ async def get_mindmap_by_note(
 ):
     """Get the latest mindmap for a note."""
     user, _ = current_user
+    
+    logger.debug(
+        "Fetching mindmap by note ID",
+        extra={
+            "user_id": str(user.id),
+            "note_id": note_id,
+            "action": "mindmap_get_by_note"
+        }
+    )
+    
     from app.models.mindmap import Mindmap
     from sqlalchemy import select
 
@@ -107,7 +225,26 @@ async def get_mindmap_by_note(
     mindmap = result.scalar_one_or_none()
 
     if not mindmap:
+        logger.warning(
+            "Mindmap not found for note",
+            extra={
+                "user_id": str(user.id),
+                "note_id": note_id,
+                "action": "mindmap_not_found"
+            }
+        )
         raise HTTPException(status_code=404, detail="Mindmap not found")
+
+    logger.info(
+        "Mindmap retrieved successfully",
+        extra={
+            "user_id": str(user.id),
+            "note_id": note_id,
+            "mindmap_id": str(mindmap.id),
+            "version": mindmap.version,
+            "action": "mindmap_retrieved"
+        }
+    )
 
     return {
         "id": str(mindmap.id),
@@ -128,6 +265,16 @@ async def get_mindmap(
 ):
     """Get a mindmap by ID."""
     user, _ = current_user
+    
+    logger.debug(
+        "Fetching mindmap by ID",
+        extra={
+            "user_id": str(user.id),
+            "mindmap_id": mindmap_id,
+            "action": "mindmap_get_by_id"
+        }
+    )
+    
     mindmap_service = MindmapService(db)
     mindmap = await mindmap_service.get_mindmap(
         mindmap_id=uuid.UUID(mindmap_id),
@@ -136,7 +283,25 @@ async def get_mindmap(
     await mindmap_service.close()
 
     if not mindmap:
+        logger.warning(
+            "Mindmap not found by ID",
+            extra={
+                "user_id": str(user.id),
+                "mindmap_id": mindmap_id,
+                "action": "mindmap_not_found"
+            }
+        )
         raise HTTPException(status_code=404, detail="Mindmap not found")
+
+    logger.info(
+        "Mindmap retrieved by ID",
+        extra={
+            "user_id": str(user.id),
+            "mindmap_id": mindmap_id,
+            "version": mindmap.version,
+            "action": "mindmap_retrieved"
+        }
+    )
 
     return {
         "id": str(mindmap.id),
@@ -158,6 +323,16 @@ async def update_mindmap(
 ):
     """Update mindmap structure (e.g., after manual edits)."""
     user, _ = current_user
+    
+    logger.info(
+        "Mindmap update requested",
+        extra={
+            "user_id": str(user.id),
+            "mindmap_id": mindmap_id,
+            "action": "mindmap_update_start"
+        }
+    )
+    
     mindmap_service = MindmapService(db)
     
     try:
@@ -167,11 +342,38 @@ async def update_mindmap(
             new_structure=structure,
         )
         await mindmap_service.close()
+        
+        logger.info(
+            "Mindmap updated successfully",
+            extra={
+                "user_id": str(user.id),
+                "mindmap_id": mindmap_id,
+                "version": updated_mindmap.version,
+                "action": "mindmap_updated"
+            }
+        )
     except ValueError as e:
         await mindmap_service.close()
+        logger.error(
+            "Validation error during mindmap update",
+            extra={
+                "user_id": str(user.id),
+                "mindmap_id": mindmap_id,
+                "error": str(e),
+                "action": "mindmap_update_validation_error"
+            }
+        )
         raise HTTPException(status_code=400, detail=str(e))
 
     if not updated_mindmap:
+        logger.warning(
+            "Mindmap not found for update",
+            extra={
+                "user_id": str(user.id),
+                "mindmap_id": mindmap_id,
+                "action": "mindmap_update_not_found"
+            }
+        )
         raise HTTPException(status_code=404, detail="Mindmap not found")
 
     return {
@@ -193,6 +395,16 @@ async def delete_mindmap(
 ):
     """Delete a mindmap."""
     user, _ = current_user
+    
+    logger.info(
+        "Mindmap deletion requested",
+        extra={
+            "user_id": str(user.id),
+            "mindmap_id": mindmap_id,
+            "action": "mindmap_delete_start"
+        }
+    )
+    
     mindmap_service = MindmapService(db)
     success = await mindmap_service.delete_mindmap(
         mindmap_id=uuid.UUID(mindmap_id),
@@ -201,7 +413,24 @@ async def delete_mindmap(
     await mindmap_service.close()
 
     if not success:
+        logger.warning(
+            "Mindmap not found for deletion",
+            extra={
+                "user_id": str(user.id),
+                "mindmap_id": mindmap_id,
+                "action": "mindmap_delete_not_found"
+            }
+        )
         raise HTTPException(status_code=404, detail="Mindmap not found")
+    
+    logger.info(
+        "Mindmap deleted successfully",
+        extra={
+            "user_id": str(user.id),
+            "mindmap_id": mindmap_id,
+            "action": "mindmap_deleted"
+        }
+    )
 
 
 @router.get("/{mindmap_id}/versions")

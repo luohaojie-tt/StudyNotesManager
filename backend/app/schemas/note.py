@@ -10,17 +10,17 @@ class NoteBase(BaseModel):
     """Base note schema."""
 
     title: str = Field(..., min_length=1, max_length=200)
-    content: Optional[str] = None
+    content: Optional[str] = Field(None, max_length=100000)
     category_id: Optional[UUID] = None
-    tags: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list, max_length=50)
 
 
 class NoteCreate(NoteBase):
     """Note creation schema."""
 
-    file_url: Optional[str] = None
-    thumbnail_url: Optional[str] = None
-    ocr_text: Optional[str] = None
+    file_url: Optional[str] = Field(None, max_length=2000)
+    thumbnail_url: Optional[str] = Field(None, max_length=2000)
+    ocr_text: Optional[str] = Field(None, max_length=100000)
     meta_data: dict = Field(default_factory=dict)
 
 
@@ -28,9 +28,9 @@ class NoteUpdate(BaseModel):
     """Note update schema."""
 
     title: Optional[str] = Field(None, min_length=1, max_length=200)
-    content: Optional[str] = None
+    content: Optional[str] = Field(None, max_length=100000)
     category_id: Optional[UUID] = None
-    tags: Optional[list[str]] = None
+    tags: Optional[list[str]] = Field(None, max_length=50)
     meta_data: Optional[dict] = None
 
 
