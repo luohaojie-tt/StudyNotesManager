@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.mindmap import Mindmap, KnowledgePoint
 from app.services.deepseek_service import DeepSeekService
+from app.services.cache_service import cache_service
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -48,13 +49,42 @@ class MindmapService:
             ValueError: If generation fails
         """
         try:
-            # Generate mindmap structure using DeepSeek
-            logger.info(f"Generating mindmap for note {note_id}")
-            structure = await self.deepseek.generate_mindmap(
+            # Try to get from cache first
+            cached_structure = await cache_service.get_cached_mindmap(
                 note_content=note_content,
-                note_title=note_title,
-                max_levels=settings.MINDMAP_MAX_LEVELS,
+                max_levels=settings.MINDMAP_MAX_LEVELS
             )
+
+            if cached_structure:
+                logger.info(
+                    "Using cached mindmap structure",
+                    extra={
+                        "note_id": str(note_id),
+                        "action": "mindmap_cache_used"
+                    }
+                )
+                structure = cached_structure
+            else:
+                # Generate mindmap structure using DeepSeek
+                logger.info(
+                    "Generating new mindmap structure",
+                    extra={
+                        "note_id": str(note_id),
+                        "action": "mindmap_generate_start"
+                    }
+                )
+                structure = await self.deepseek.generate_mindmap(
+                    note_content=note_content,
+                    note_title=note_title,
+                    max_levels=settings.MINDMAP_MAX_LEVELS,
+                )
+
+                # Cache the generated structure
+                await cache_service.cache_mindmap(
+                    note_content=note_content,
+                    max_levels=settings.MINDMAP_MAX_LEVELS,
+                    mindmap_structure=structure
+                )
 
             # Create mindmap record
             mindmap = Mindmap(

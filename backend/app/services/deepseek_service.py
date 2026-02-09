@@ -10,26 +10,58 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
+# Module-level shared HTTP client to prevent resource leaks
+_shared_client: Optional[httpx.AsyncClient] = None
+
+
+def get_shared_client() -> httpx.AsyncClient:
+    """Get or create shared HTTP client for DeepSeek API.
+
+    Returns:
+        Shared AsyncClient instance
+    """
+    global _shared_client
+    if _shared_client is None:
+        _shared_client = httpx.AsyncClient(
+            base_url=settings.DEEPSEEK_BASE_URL,
+            headers={
+                "Authorization": f"Bearer {settings.DEEPSEEK_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            timeout=60.0,
+        )
+        logger.info("Created shared DeepSeek HTTP client")
+    return _shared_client
+
+
+async def close_shared_client() -> None:
+    """Close shared HTTP client. Should be called on application shutdown."""
+    global _shared_client
+    if _shared_client is not None:
+        await _shared_client.aclose()
+        _shared_client = None
+        logger.info("Closed shared DeepSeek HTTP client")
+
 
 class DeepSeekService:
     """Service for interacting with DeepSeek API."""
 
     def __init__(self) -> None:
-        """Initialize DeepSeek service."""
+        """Initialize DeepSeek service with shared HTTP client."""
         self.api_key = settings.DEEPSEEK_API_KEY
         self.base_url = settings.DEEPSEEK_BASE_URL
-        self.client = httpx.AsyncClient(
-            base_url=self.base_url,
-            headers={
-                "Authorization": f"Bearer {self.api_key}",
-                "Content-Type": "application/json",
-            },
-            timeout=60.0,
-        )
+        # Use shared client to prevent resource leaks
+        self.client = get_shared_client()
 
     async def close(self) -> None:
-        """Close HTTP client."""
-        await self.client.aclose()
+        """Close HTTP client.
+
+        Note: Individual service instances no longer close the shared client.
+        Use close_shared_client() on application shutdown instead.
+        """
+        # Shared client is managed at module level
+        # This method is kept for backwards compatibility but does nothing
+        logger.debug("DeepSeekService.close() called - shared client not closed")
 
     async def _make_request(
         self,
