@@ -1,0 +1,1 @@
+"""StudyNotesManager Backend Application"""
