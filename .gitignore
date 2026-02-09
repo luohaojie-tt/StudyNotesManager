@@ -61,6 +61,9 @@ docker-compose.override.yml
 .serena/
 .claude/
 
+# But track skills
+!.claude/skills/
+
 # OS
 Thumbs.db
 desktop.ini
