@@ -4,6 +4,8 @@ Unit tests for DeepSeekService.
 from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 import httpx
+from tests.fixtures.test_data import valid_password, valid_email, valid_full_name, test_data
+
 
 
 @pytest.mark.unit
@@ -187,7 +189,7 @@ class TestDeepSeekService:
             mock_client.aclose.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_validate_mindmap_structure_valid(self):
+    async test_validate_mindmap_structure_valid(self, valid_password):
         """Test validation of valid mindmap structure."""
         with patch('app.services.deepseek_service.httpx.AsyncClient'):
             from app.services.deepseek_service import DeepSeekService
@@ -210,7 +212,7 @@ class TestDeepSeekService:
             service._validate_mindmap_structure(valid_structure, max_levels=3)
 
     @pytest.mark.asyncio
-    async def test_validate_mindmap_structure_invalid_depth(self):
+    async test_validate_mindmap_structure_invalid_depth(self, valid_password):
         """Test validation fails for too deep structure."""
         with patch('app.services.deepseek_service.httpx.AsyncClient'):
             from app.services.deepseek_service import DeepSeekService
@@ -230,7 +232,7 @@ class TestDeepSeekService:
             service._validate_mindmap_structure(deep_structure, max_levels=3)
 
     @pytest.mark.asyncio
-    async def test_validate_mindmap_structure_missing_fields(self):
+    async test_validate_mindmap_structure_missing_fields(self, valid_password):
         """Test validation fails for missing required fields."""
         with patch('app.services.deepseek_service.httpx.AsyncClient'):
             from app.services.deepseek_service import DeepSeekService

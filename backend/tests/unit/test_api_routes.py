@@ -6,6 +6,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
+from tests.fixtures.test_data import valid_password, valid_email, valid_full_name, test_data
+
 
 
 @pytest.mark.unit

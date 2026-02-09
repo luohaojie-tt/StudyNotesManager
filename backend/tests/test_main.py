@@ -2,6 +2,8 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
+from tests.fixtures.test_data import valid_password, valid_email, valid_full_name, test_data
+
 
 client = TestClient(app)
 

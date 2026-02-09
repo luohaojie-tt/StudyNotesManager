@@ -7,6 +7,8 @@ import pytest
 
 from app.services.mindmap_service import MindmapService
 from app.models.mindmap import Mindmap, KnowledgePoint
+from tests.fixtures.test_data import valid_password, valid_email, valid_full_name, test_data
+
 
 
 @pytest.mark.unit

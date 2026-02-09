@@ -5,6 +5,8 @@ These tests simulate complete user journeys through the application.
 """
 import pytest
 from playwright.async_api import async_page, Page
+from tests.fixtures.test_data import valid_password, valid_email, valid_full_name, test_data
+
 
 
 @pytest.mark.e2e
@@ -16,7 +18,7 @@ class TestUserRegistrationWorkflow:
     async def test_new_user_registration(self, page: Page):
         """Test registering a new user and logging in."""
         # Navigate to registration page
-        await page.goto("http://localhost:3000/register")
+        await page.goto(f"{BASE_URL}/register")
 
         # Fill registration form
         await page.fill("input[name='email']", "e2e@example.com")
@@ -40,7 +42,7 @@ class TestUserRegistrationWorkflow:
     async def test_login_logout_flow(self, page: Page):
         """Test logging in and logging out."""
         # Go to login page
-        await page.goto("http://localhost:3000/login")
+        await page.goto(f"{BASE_URL}/login")
 
         # Fill login form
         await page.fill("input[name='username']", "e2euser")
@@ -72,7 +74,7 @@ class TestNoteManagementWorkflow:
         page = await context.new_page()
 
         # Login first
-        await page.goto("http://localhost:3000/login")
+        await page.goto(f"{BASE_URL}/login")
         await page.fill("input[name='username']", "e2euser")
         await page.fill("input[name='password']", "SecurePass123!")
         await page.click("button[type='submit']")
@@ -123,7 +125,7 @@ class TestNoteManagementWorkflow:
         page = authenticated_page
 
         # Go to notes page
-        await page.goto("http://localhost:3000/notes")
+        await page.goto(f"{BASE_URL}/notes")
 
         # Click on first note
         await page.click(".note-card:first-child")
@@ -150,7 +152,7 @@ class TestNoteManagementWorkflow:
         page = authenticated_page
 
         # Go to notes page
-        await page.goto("http://localhost:3000/notes")
+        await page.goto(f"{BASE_URL}/notes")
 
         # Get initial note count
         initial_count = await page.locator(".note-card").count()
@@ -182,7 +184,7 @@ class TestQuizWorkflow:
         page = await context.new_page()
 
         # Login
-        await page.goto("http://localhost:3000/login")
+        await page.goto(f"{BASE_URL}/login")
         await page.fill("input[name='username']", "e2euser")
         await page.fill("input[name='password']", "SecurePass123!")
         await page.click("button[type='submit']")
@@ -207,7 +209,7 @@ class TestQuizWorkflow:
         page = authenticated_page
 
         # Go to notes page
-        await page.goto("http://localhost:3000/notes")
+        await page.goto(f"{BASE_URL}/notes")
 
         # Click on note
         await page.click(".note-card:first-child")
@@ -227,7 +229,7 @@ class TestQuizWorkflow:
         page = authenticated_page
 
         # Generate quiz first
-        await page.goto("http://localhost:3000/notes")
+        await page.goto(f"{BASE_URL}/notes")
         await page.click(".note-card:first-child")
         await page.click("button:has-text('Generate Quiz')")
         await page.wait_for_selector(".quiz-question")
@@ -255,7 +257,7 @@ class TestQuizWorkflow:
         page = authenticated_page
 
         # Generate and submit quiz
-        await page.goto("http://localhost:3000/notes")
+        await page.goto(f"{BASE_URL}/notes")
         await page.click(".note-card:first-child")
         await page.click("button:has-text('Generate Quiz')")
         await page.wait_for_selector(".quiz-question")
@@ -289,7 +291,7 @@ class TestMindmapWorkflow:
         page = await context.new_page()
 
         # Login
-        await page.goto("http://localhost:3000/login")
+        await page.goto(f"{BASE_URL}/login")
         await page.fill("input[name='username']", "e2euser")
         await page.fill("input[name='password']", "SecurePass123!")
         await page.click("button[type='submit']")
@@ -329,7 +331,7 @@ class TestMindmapWorkflow:
         page = authenticated_page
 
         # Go to existing mindmap
-        await page.goto("http://localhost:3000/notes")
+        await page.goto(f"{BASE_URL}/notes")
         await page.click(".note-card:first-child")
         await page.click("button:has-text('View Mindmap')")
 
@@ -364,7 +366,7 @@ class TestErrorHandling:
         # Simulate offline mode
         await page.context.set_offline(True)
 
-        await page.goto("http://localhost:3000/login")
+        await page.goto(f"{BASE_URL}/login")
 
         # Try to login (should fail gracefully)
         await page.fill("input[name='username']", "e2euser")
@@ -380,7 +382,7 @@ class TestErrorHandling:
     @pytest.mark.asyncio
     async def test_form_validation_errors(self, page: Page):
         """Test form validation for invalid inputs."""
-        await page.goto("http://localhost:3000/register")
+        await page.goto(f"{BASE_URL}/register")
 
         # Submit empty form
         await page.click("button[type='submit']")

@@ -1,0 +1,293 @@
+================================================================================
+TEST SECURITY ISSUES REPORT
+================================================================================
+
+Total files with issues: 7
+Total issues found: 91
+
+File: D:\work\StudyNotesManager\backend\tests\api\test_auth.py
+--------------------------------------------------------------------------------
+  Line 18: [CRITICAL] Hardcoded test email
+    "email": "test@example.com",
+
+  Line 19: [CRITICAL] Hardcoded password pattern
+    "password": "SecurePass123",
+
+  Line 34: [CRITICAL] Hardcoded test email
+    assert data["email"] == "test@example.com"
+
+  Line 49: [CRITICAL] Hardcoded password pattern
+    "password": "SecurePass123",
+
+  Line 91: [CRITICAL] Hardcoded password pattern
+    "password": "SecurePass123",
+
+  Line 103: [CRITICAL] Hardcoded password pattern
+    "password": "SecurePass123",
+
+  Line 113: [CRITICAL] Hardcoded test email
+    "email": "test@example.com",
+
+  Line 123: [CRITICAL] Hardcoded test email
+    "email": "test@example.com",
+
+  Line 124: [CRITICAL] Hardcoded password pattern
+    "password": "SecurePass123",
+
+  Line 142: [CRITICAL] Hardcoded password pattern
+    "password": "SecurePass123",
+
+  Line 152: [CRITICAL] Hardcoded password pattern
+    "password": "SecurePass123",
+
+  Line 175: [CRITICAL] Hardcoded password pattern
+    "password": "SecurePass123",
+
+  Line 212: [CRITICAL] Hardcoded password pattern
+    json={"password": "SecurePass123"},
+
+  Line 219: [CRITICAL] Hardcoded test email
+    json={"email": "test@example.com"},
+
+  Line 230: [CRITICAL] Hardcoded password pattern
+    "password": "SecurePass123",
+
+  Line 241: [CRITICAL] Hardcoded password pattern
+    "password": "SecurePass123",
+
+  Line 284: [CRITICAL] Hardcoded test email
+    "email": "test@example.com",
+
+  Line 285: [CRITICAL] Hardcoded password pattern
+    "password": "SecurePass123",
+
+  Line 299: [CRITICAL] Hardcoded password pattern
+    "password": "SecurePass123",
+
+  Line 308: [CRITICAL] Hardcoded password pattern
+    "password": "SecurePass123",
+
+  Line 343: [CRITICAL] Hardcoded test email
+    "email": "test@example.com",
+
+  Line 344: [CRITICAL] Hardcoded password pattern
+    "password": "SecurePass123",
+
+File: D:\work\StudyNotesManager\backend\tests\api\test_notes_upload.py
+--------------------------------------------------------------------------------
+  Line 19: [CRITICAL] Hardcoded test email
+    "email": "test@example.com",
+
+  Line 20: [CRITICAL] Hardcoded password pattern
+    "password": "SecurePass123",
+
+  Line 29: [CRITICAL] Hardcoded test email
+    "email": "test@example.com",
+
+  Line 30: [CRITICAL] Hardcoded password pattern
+    "password": "SecurePass123"
+
+File: D:\work\StudyNotesManager\backend\tests\e2e\test_user_workflows.py
+--------------------------------------------------------------------------------
+  Line 19: [CRITICAL] Hardcoded URL in E2E test
+    await page.goto("http://localhost:3000/register")
+
+  Line 24: [CRITICAL] Hardcoded password pattern
+    await page.fill("input[name='password']", "SecurePass123!")
+
+  Line 25: [CRITICAL] Hardcoded password pattern
+    await page.fill("input[name='confirmPassword']", "SecurePass123!")
+
+  Line 43: [CRITICAL] Hardcoded URL in E2E test
+    await page.goto("http://localhost:3000/login")
+
+  Line 47: [CRITICAL] Hardcoded password pattern
+    await page.fill("input[name='password']", "SecurePass123!")
+
+  Line 75: [CRITICAL] Hardcoded URL in E2E test
+    await page.goto("http://localhost:3000/login")
+
+  Line 77: [CRITICAL] Hardcoded password pattern
+    await page.fill("input[name='password']", "SecurePass123!")
+
+  Line 126: [CRITICAL] Hardcoded URL in E2E test
+    await page.goto("http://localhost:3000/notes")
+
+  Line 153: [CRITICAL] Hardcoded URL in E2E test
+    await page.goto("http://localhost:3000/notes")
+
+  Line 185: [CRITICAL] Hardcoded URL in E2E test
+    await page.goto("http://localhost:3000/login")
+
+  Line 187: [CRITICAL] Hardcoded password pattern
+    await page.fill("input[name='password']", "SecurePass123!")
+
+  Line 210: [CRITICAL] Hardcoded URL in E2E test
+    await page.goto("http://localhost:3000/notes")
+
+  Line 230: [CRITICAL] Hardcoded URL in E2E test
+    await page.goto("http://localhost:3000/notes")
+
+  Line 258: [CRITICAL] Hardcoded URL in E2E test
+    await page.goto("http://localhost:3000/notes")
+
+  Line 292: [CRITICAL] Hardcoded URL in E2E test
+    await page.goto("http://localhost:3000/login")
+
+  Line 294: [CRITICAL] Hardcoded password pattern
+    await page.fill("input[name='password']", "SecurePass123!")
+
+  Line 332: [CRITICAL] Hardcoded URL in E2E test
+    await page.goto("http://localhost:3000/notes")
+
+  Line 367: [CRITICAL] Hardcoded URL in E2E test
+    await page.goto("http://localhost:3000/login")
+
+  Line 371: [CRITICAL] Hardcoded password pattern
+    await page.fill("input[name='password']", "SecurePass123!")
+
+  Line 383: [CRITICAL] Hardcoded URL in E2E test
+    await page.goto("http://localhost:3000/register")
+
+  Line 399: [CRITICAL] Hardcoded test email
+    await page.fill("input[name='email']", "test@example.com")
+
+File: D:\work\StudyNotesManager\backend\tests\fixtures\test_data.py
+--------------------------------------------------------------------------------
+  Line 158: [CRITICAL] Hardcoded test email
+    LEGACY_TEST_EMAIL = "test@example.com"
+
+File: D:\work\StudyNotesManager\backend\tests\integration\test_api_integration.py
+--------------------------------------------------------------------------------
+  Line 21: [CRITICAL] Hardcoded password pattern
+    "password": "SecurePass123!",
+
+  Line 39: [CRITICAL] Hardcoded password pattern
+    "password": "SecurePass123!",
+
+  Line 52: [CRITICAL] Hardcoded password pattern
+    "password": "SecurePass123!",
+
+File: D:\work\StudyNotesManager\backend\tests\unit\test_auth.py
+--------------------------------------------------------------------------------
+  Line 61: [CRITICAL] Hardcoded test email
+    data = {"sub": str(uuid4()), "email": "test@example.com"}
+
+  Line 73: [CRITICAL] Hardcoded test email
+    data = {"sub": str(uuid4()), "email": "test@example.com"}
+
+  Line 85: [CRITICAL] Hardcoded test email
+    data = {"sub": str(uuid4()), "email": "test@example.com"}
+
+  Line 97: [CRITICAL] Hardcoded test email
+    data = {"sub": str(uuid4()), "email": "test@example.com"}
+
+  Line 109: [CRITICAL] Hardcoded test email
+    data = {"sub": str(uuid4()), "email": "test@example.com"}
+
+  Line 130: [CRITICAL] Hardcoded test email
+    data = {"sub": str(uuid4()), "email": "test@example.com"}
+
+  Line 141: [CRITICAL] Hardcoded test email
+    data = {"sub": str(uuid4()), "email": "test@example.com"}
+
+  Line 171: [CRITICAL] Hardcoded test email
+    email="test@example.com",
+
+  Line 172: [CRITICAL] Hardcoded password pattern
+    password="SecurePass123",
+
+  Line 204: [CRITICAL] Hardcoded test email
+    email="test@example.com",
+
+  Line 268: [CRITICAL] Hardcoded test email
+    email="test@example.com",
+
+  Line 269: [CRITICAL] Hardcoded password pattern
+    password_hash=get_password_hash("SecurePass123"),
+
+  Line 280: [CRITICAL] Hardcoded test email
+    "test@example.com",
+
+  Line 285: [CRITICAL] Hardcoded test email
+    assert authenticated_user.email == "test@example.com"
+
+  Line 297: [CRITICAL] Hardcoded test email
+    email="test@example.com",
+
+  Line 298: [CRITICAL] Hardcoded password pattern
+    password_hash=get_password_hash("SecurePass123"),
+
+  Line 309: [CRITICAL] Hardcoded test email
+    "test@example.com",
+
+  Line 341: [CRITICAL] Hardcoded test email
+    email="test@example.com",
+
+  Line 342: [CRITICAL] Hardcoded password pattern
+    password_hash=get_password_hash("SecurePass123"),
+
+  Line 353: [CRITICAL] Hardcoded test email
+    "test@example.com",
+
+  Line 368: [CRITICAL] Hardcoded test email
+    email="test@example.com",
+
+  Line 382: [CRITICAL] Hardcoded test email
+    assert found_user.email == "test@example.com"
+
+  Line 405: [CRITICAL] Hardcoded test email
+    email="test@example.com",
+
+  Line 429: [CRITICAL] Hardcoded test email
+    email="test@example.com",
+
+  Line 440: [CRITICAL] Hardcoded test email
+    assert access_payload["email"] == "test@example.com"
+
+  Line 445: [CRITICAL] Hardcoded test email
+    assert refresh_payload["email"] == "test@example.com"
+
+  Line 458: [CRITICAL] Hardcoded test email
+    email="test@example.com",
+
+  Line 459: [CRITICAL] Hardcoded password pattern
+    password="SecurePass123",
+
+  Line 463: [CRITICAL] Hardcoded test email
+    assert user_data.email == "test@example.com"
+
+  Line 464: [CRITICAL] Hardcoded password pattern
+    assert user_data.password == "SecurePass123"
+
+  Line 474: [CRITICAL] Hardcoded test email
+    email="test@example.com",
+
+  Line 486: [CRITICAL] Hardcoded test email
+    email="test@example.com",
+
+  Line 498: [CRITICAL] Hardcoded test email
+    email="test@example.com",
+
+  Line 508: [CRITICAL] Hardcoded test email
+    email="test@example.com",
+
+  Line 509: [CRITICAL] Hardcoded password pattern
+    password="SecurePass123"
+
+  Line 512: [CRITICAL] Hardcoded test email
+    assert login_data.email == "test@example.com"
+
+  Line 513: [CRITICAL] Hardcoded password pattern
+    assert login_data.password == "SecurePass123"
+
+  Line 523: [CRITICAL] Hardcoded test email
+    email="test@example.com",
+
+  Line 531: [CRITICAL] Hardcoded test email
+    assert user_response.email == "test@example.com"
+
+File: D:\work\StudyNotesManager\backend\tests\unit\test_notes.py
+--------------------------------------------------------------------------------
+  Line 33: [CRITICAL] Hardcoded test email
+    email="test@example.com",

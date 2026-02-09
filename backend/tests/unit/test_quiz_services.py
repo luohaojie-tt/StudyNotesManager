@@ -8,6 +8,8 @@ import pytest
 from app.services.quiz_generation_service import QuizGenerationService
 from app.services.quiz_grading_service import QuizGradingService
 from app.services.quiz_quality_service import QuizQualityValidator
+from tests.fixtures.test_data import valid_password, valid_email, valid_full_name, test_data
+
 
 
 @pytest.mark.unit

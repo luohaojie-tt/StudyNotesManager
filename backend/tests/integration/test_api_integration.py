@@ -3,6 +3,8 @@ Integration tests for API endpoints.
 """
 import pytest
 from httpx import AsyncClient
+from tests.fixtures.test_data import valid_password, valid_email, valid_full_name, test_data
+
 
 
 @pytest.mark.integration
@@ -18,8 +20,7 @@ class TestAuthAPI:
             json={
                 "email": "integration@test.com",
                 "username": "integrationuser",
-                "password": "SecurePass123!",
-                "full_name": "Integration Test User"
+                "password": valid_password, "full_name": "Integration Test User"
             }
         )
 
@@ -36,8 +37,7 @@ class TestAuthAPI:
         user_data = {
             "email": "duplicate@test.com",
             "username": "user1",
-            "password": "SecurePass123!",
-            "full_name": "User One"
+            "password": valid_password, "full_name": "User One"
         }
 
         # First registration
@@ -49,8 +49,7 @@ class TestAuthAPI:
             json={
                 "email": "duplicate@test.com",
                 "username": "user2",
-                "password": "SecurePass123!",
-                "full_name": "User Two"
+                "password": valid_password, "full_name": "User Two"
             }
         )
 

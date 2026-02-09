@@ -155,13 +155,16 @@ def mock_chromadb() -> MagicMock:
 
 
 @pytest.fixture
-def test_user_data() -> dict:
-    """Sample user data for testing."""
+def test_user_data(valid_email, valid_password, valid_full_name) -> dict:
+    """Generate secure user data for testing.
+    
+    Uses random data to avoid leaking sensitive patterns.
+    """
     return {
-        "email": "test@example.com",
-        "username": "testuser",
-        "password": "SecurePass123!",
-        "full_name": "Test User"
+        "email": valid_email,
+        "username": test_data.random_username(),
+        "password": valid_password,
+        "full_name": valid_full_name,
     }
 
 

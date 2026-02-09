@@ -3,6 +3,8 @@ Authentication API integration tests.
 """
 import pytest
 from httpx import AsyncClient
+from tests.fixtures.test_data import valid_password, valid_email, valid_full_name, test_data
+
 
 
 @pytest.mark.integration
@@ -15,9 +17,7 @@ class TestAuthRegisterEndpoint:
         response = await client.post(
             "/api/auth/register",
             json={
-                "email": "test@example.com",
-                "password": "SecurePass123",
-                "full_name": "Test User",
+                "email": valid_email, "password": valid_password, "full_name": "Test User",
             },
         )
         
@@ -46,8 +46,7 @@ class TestAuthRegisterEndpoint:
         """Test registering with duplicate email returns error."""
         user_data = {
             "email": "duplicate@example.com",
-            "password": "SecurePass123",
-            "full_name": "Test User",
+            "password": valid_password, "full_name": "Test User",
         }
         
         # First registration
@@ -88,8 +87,7 @@ class TestAuthRegisterEndpoint:
             "/api/auth/register",
             json={
                 "email": "not-an-email",
-                "password": "SecurePass123",
-                "full_name": "Test User",
+                "password": valid_password, "full_name": "Test User",
             },
         )
         assert response.status_code == 422
@@ -100,8 +98,7 @@ class TestAuthRegisterEndpoint:
         response = await client.post(
             "/api/auth/register",
             json={
-                "password": "SecurePass123",
-                "full_name": "Test User",
+                "password": valid_password, "full_name": "Test User",
             },
         )
         assert response.status_code == 422
@@ -110,8 +107,7 @@ class TestAuthRegisterEndpoint:
         response = await client.post(
             "/api/auth/register",
             json={
-                "email": "test@example.com",
-                "full_name": "Test User",
+                "email": valid_email, "full_name": "Test User",
             },
         )
         assert response.status_code == 422
@@ -120,9 +116,7 @@ class TestAuthRegisterEndpoint:
         response = await client.post(
             "/api/auth/register",
             json={
-                "email": "test@example.com",
-                "password": "SecurePass123",
-            },
+                "email": valid_email, "password": valid_password, },
         )
         assert response.status_code == 422
 
@@ -139,8 +133,7 @@ class TestAuthLoginEndpoint:
             "/api/auth/register",
             json={
                 "email": "login@example.com",
-                "password": "SecurePass123",
-                "full_name": "Test User",
+                "password": valid_password, "full_name": "Test User",
             },
         )
         
@@ -149,8 +142,7 @@ class TestAuthLoginEndpoint:
             "/api/auth/login",
             json={
                 "email": "login@example.com",
-                "password": "SecurePass123",
-            },
+                "password": valid_password, },
         )
         
         assert response.status_code == 200
@@ -172,8 +164,7 @@ class TestAuthLoginEndpoint:
             "/api/auth/login",
             json={
                 "email": "nonexistent@example.com",
-                "password": "SecurePass123",
-            },
+                "password": valid_password, },
         )
         
         assert response.status_code == 401
@@ -209,14 +200,14 @@ class TestAuthLoginEndpoint:
         # Missing email
         response = await client.post(
             "/api/auth/login",
-            json={"password": "SecurePass123"},
+            json={"password": valid_password, },
         )
         assert response.status_code == 422
         
         # Missing password
         response = await client.post(
             "/api/auth/login",
-            json={"email": "test@example.com"},
+            json={"email": valid_email, },
         )
         assert response.status_code == 422
 
@@ -227,8 +218,7 @@ class TestAuthLoginEndpoint:
             "/api/auth/register",
             json={
                 "email": "login@example.com",
-                "password": "SecurePass123",
-                "full_name": "Test User",
+                "password": valid_password, "full_name": "Test User",
             },
         )
         original_last_login = register_response.json().get("last_login_at")
@@ -238,8 +228,7 @@ class TestAuthLoginEndpoint:
             "/api/auth/login",
             json={
                 "email": "login@example.com",
-                "password": "SecurePass123",
-            },
+                "password": valid_password, },
         )
         
         # Get user info to check last_login_at was updated
@@ -281,9 +270,7 @@ class TestAuthEndpointResponseHeaders:
         response = await client.post(
             "/api/auth/register",
             json={
-                "email": "test@example.com",
-                "password": "SecurePass123",
-                "full_name": "Test User",
+                "email": valid_email, "password": valid_password, "full_name": "Test User",
             },
         )
         
@@ -296,8 +283,7 @@ class TestAuthEndpointResponseHeaders:
             "/api/auth/register",
             json={
                 "email": "login@example.com",
-                "password": "SecurePass123",
-                "full_name": "Test User",
+                "password": valid_password, "full_name": "Test User",
             },
         )
         
@@ -305,8 +291,7 @@ class TestAuthEndpointResponseHeaders:
             "/api/auth/login",
             json={
                 "email": "login@example.com",
-                "password": "SecurePass123",
-            },
+                "password": valid_password, },
         )
         
         assert "application/json" in response.headers.get("content-type", "")
@@ -340,9 +325,7 @@ class TestAuthEndpointErrorHandling:
         response = await client.post(
             "/api/auth/register",
             json={
-                "email": "test@example.com",
-                "password": "SecurePass123",
-                "full_name": "Test User",
+                "email": valid_email, "password": valid_password, "full_name": "Test User",
                 "extra_field": "should_be_ignored",
             },
         )

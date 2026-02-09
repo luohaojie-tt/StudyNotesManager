@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import AsyncClient
+from tests.fixtures.test_data import valid_password, valid_email, valid_full_name, test_data
+
 
 
 @pytest.fixture
@@ -16,9 +18,7 @@ async def auth_headers(client: AsyncClient):
     await client.post(
         "/api/auth/register",
         json={
-            "email": "test@example.com",
-            "password": "SecurePass123",
-            "full_name": "Test User"
+            "email": valid_email, "password": valid_password, "full_name": "Test User"
         }
     )
     
@@ -26,9 +26,7 @@ async def auth_headers(client: AsyncClient):
     response = await client.post(
         "/api/auth/login",
         json={
-            "email": "test@example.com",
-            "password": "SecurePass123"
-        }
+            "email": valid_email, "password": valid_password, }
     )
     
     token = response.json()["access_token"]

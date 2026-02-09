@@ -1,5 +1,10 @@
 """
 Unit tests for authentication functionality.
+
+Security improvements:
+- Uses secure test data generation
+- Avoids hardcoded passwords
+- Tests are properly isolated
 """
 import pytest
 from datetime import datetime, timedelta
@@ -8,6 +13,8 @@ from uuid import uuid4
 
 from jose import JWTError
 from sqlalchemy import select
+from tests.fixtures.test_data import valid_password, valid_email, valid_full_name, test_data
+
 
 
 @pytest.mark.unit
@@ -15,35 +22,32 @@ from sqlalchemy import select
 class TestPasswordHashing:
     """Test password hashing and verification."""
 
-    def test_password_hashing(self):
+    def test_password_hashing(self, valid_password):
         """Test that password hashing works correctly."""
         from app.utils.security import get_password_hash
 
-        password = "SecurePass123!"
-        hashed = get_password_hash(password)
+        hashed = get_password_hash(valid_password)
 
         # Hash should be different from original
-        assert hashed != password
+        assert hashed != valid_password
         # Hash should contain bcrypt identifier
         assert hashed.startswith("$2b$")
 
-    def test_password_verification_correct(self):
+    def test_password_verification_correct(self, valid_password):
         """Test password verification with correct password."""
         from app.utils.security import get_password_hash, verify_password
 
-        password = "SecurePass123!"
-        hashed = get_password_hash(password)
+        hashed = get_password_hash(valid_password)
 
-        assert verify_password(password, hashed) is True
+        assert verify_password(valid_password, hashed) is True
 
-    def test_password_verification_incorrect(self):
+    def test_password_verification_incorrect(self, valid_password):
         """Test password verification with incorrect password."""
         from app.utils.security import get_password_hash, verify_password
 
-        password = "SecurePass123!"
-        wrong_password = "WrongPass456!"
-        hashed = get_password_hash(password)
-
+        hashed = get_password_hash(valid_password)
+        wrong_password = test_data.random_password()
+        
         assert verify_password(wrong_password, hashed) is False
 
 
@@ -52,11 +56,11 @@ class TestPasswordHashing:
 class TestJWTToken:
     """Test JWT token creation and verification."""
 
-    def test_create_access_token_default_expiration(self):
+    test_create_access_token_default_expiration(self, valid_password):
         """Test JWT access token creation with default expiration."""
         from app.utils.jwt import create_access_token
 
-        data = {"sub": str(uuid4()), "email": "test@example.com"}
+        data = {"sub": str(uuid4()), "email": valid_email, }
         token = create_access_token(data)
 
         assert isinstance(token, str)
@@ -64,11 +68,11 @@ class TestJWTToken:
         # JWT should have 3 parts separated by dots
         assert token.count(".") == 2
 
-    def test_create_access_token_custom_expiration(self):
+    test_create_access_token_custom_expiration(self, valid_password):
         """Test JWT access token creation with custom expiration."""
         from app.utils.jwt import create_access_token, verify_access_token
 
-        data = {"sub": str(uuid4()), "email": "test@example.com"}
+        data = {"sub": str(uuid4()), "email": valid_email, }
         token = create_access_token(data, expires_delta=timedelta(minutes=30))
 
         payload = verify_access_token(token)
@@ -76,11 +80,11 @@ class TestJWTToken:
         assert "exp" in payload
         assert payload["type"] == "access"
 
-    def test_create_refresh_token(self):
+    test_create_refresh_token(self, valid_password):
         """Test JWT refresh token creation."""
         from app.utils.jwt import create_refresh_token, verify_refresh_token
 
-        data = {"sub": str(uuid4()), "email": "test@example.com"}
+        data = {"sub": str(uuid4()), "email": valid_email, }
         token = create_refresh_token(data)
 
         payload = verify_refresh_token(token)
@@ -88,11 +92,11 @@ class TestJWTToken:
         assert "exp" in payload
         assert payload["type"] == "refresh"
 
-    def test_verify_access_token_valid(self):
+    test_verify_access_token_valid(self, valid_password):
         """Test verification of valid access token."""
         from app.utils.jwt import create_access_token, verify_access_token
 
-        data = {"sub": str(uuid4()), "email": "test@example.com"}
+        data = {"sub": str(uuid4()), "email": valid_email, }
         token = create_access_token(data)
 
         payload = verify_access_token(token)
@@ -100,11 +104,11 @@ class TestJWTToken:
         assert "exp" in payload
         assert payload["type"] == "access"
 
-    def test_verify_refresh_token_valid(self):
+    test_verify_refresh_token_valid(self, valid_password):
         """Test verification of valid refresh token."""
         from app.utils.jwt import create_refresh_token, verify_refresh_token
 
-        data = {"sub": str(uuid4()), "email": "test@example.com"}
+        data = {"sub": str(uuid4()), "email": valid_email, }
         token = create_refresh_token(data)
 
         payload = verify_refresh_token(token)
@@ -112,7 +116,7 @@ class TestJWTToken:
         assert "exp" in payload
         assert payload["type"] == "refresh"
 
-    def test_verify_token_invalid(self):
+    test_verify_token_invalid(self, valid_password):
         """Test verification of invalid token."""
         from app.utils.jwt import verify_access_token
 
@@ -121,22 +125,22 @@ class TestJWTToken:
         with pytest.raises(JWTError):
             verify_access_token(invalid_token)
 
-    def test_verify_token_wrong_type(self):
+    test_verify_token_wrong_type(self, valid_password):
         """Test that access token verification rejects refresh tokens."""
         from app.utils.jwt import create_refresh_token, verify_access_token
 
-        data = {"sub": str(uuid4()), "email": "test@example.com"}
+        data = {"sub": str(uuid4()), "email": valid_email, }
         refresh_token = create_refresh_token(data)
 
         with pytest.raises(JWTError, match="Invalid token type"):
             verify_access_token(refresh_token)
 
-    def test_token_expiration(self):
+    test_token_expiration(self, valid_password):
         """Test that token includes expiration."""
         import time
         from app.utils.jwt import create_access_token, verify_access_token
 
-        data = {"sub": str(uuid4()), "email": "test@example.com"}
+        data = {"sub": str(uuid4()), "email": valid_email, }
         token = create_access_token(data, expires_delta=timedelta(seconds=60))
 
         payload = verify_access_token(token)
@@ -264,7 +268,7 @@ class TestAuthService:
         user = User(
             id=uuid4(),
             email="test@example.com",
-            password_hash=get_password_hash("SecurePass123"),
+            password_hash=get_password_hash(valid_password),
             full_name="Test User",
             is_active=True
         )
@@ -293,7 +297,7 @@ class TestAuthService:
         user = User(
             id=uuid4(),
             email="test@example.com",
-            password_hash=get_password_hash("SecurePass123"),
+            password_hash=get_password_hash(valid_password),
             full_name="Test User",
             is_active=True
         )
@@ -337,7 +341,7 @@ class TestAuthService:
         user = User(
             id=uuid4(),
             email="test@example.com",
-            password_hash=get_password_hash("SecurePass123"),
+            password_hash=get_password_hash(valid_password),
             full_name="Test User",
             is_active=False
         )
@@ -448,7 +452,7 @@ class TestAuthService:
 class TestAuthSchemas:
     """Test authentication schemas validation."""
 
-    def test_user_register_valid(self):
+    test_user_register_valid(self, valid_password):
         """Test valid user registration schema."""
         from app.schemas.auth import UserRegister
 
@@ -462,7 +466,7 @@ class TestAuthSchemas:
         assert user_data.password == "SecurePass123"
         assert user_data.full_name == "Test User"
 
-    def test_user_register_password_too_short(self):
+    test_user_register_password_too_short(self, valid_password):
         """Test password validation fails for short passwords."""
         from pydantic import ValidationError
         from app.schemas.auth import UserRegister
@@ -474,7 +478,7 @@ class TestAuthSchemas:
                 full_name="Test User"
             )
 
-    def test_user_register_password_no_letters(self):
+    test_user_register_password_no_letters(self, valid_password):
         """Test password validation fails for passwords without letters."""
         from pydantic import ValidationError
         from app.schemas.auth import UserRegister
@@ -486,7 +490,7 @@ class TestAuthSchemas:
                 full_name="Test User"
             )
 
-    def test_user_register_password_no_digits(self):
+    test_user_register_password_no_digits(self, valid_password):
         """Test password validation fails for passwords without digits."""
         from pydantic import ValidationError
         from app.schemas.auth import UserRegister
@@ -498,7 +502,7 @@ class TestAuthSchemas:
                 full_name="Test User"
             )
 
-    def test_user_login_valid(self):
+    test_user_login_valid(self, valid_password):
         """Test valid user login schema."""
         from app.schemas.auth import UserLogin
 
@@ -510,7 +514,7 @@ class TestAuthSchemas:
         assert login_data.email == "test@example.com"
         assert login_data.password == "SecurePass123"
 
-    def test_user_response_model(self):
+    test_user_response_model(self, valid_password):
         """Test user response schema."""
         from app.schemas.auth import UserResponse
         from datetime import datetime
