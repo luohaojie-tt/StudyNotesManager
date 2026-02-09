@@ -62,7 +62,7 @@ docker-compose.override.yml
 .claude/
 
 # But track skills
-!.claude/skills/
+!.claude/git-workflow/
 
 # OS
 Thumbs.db
