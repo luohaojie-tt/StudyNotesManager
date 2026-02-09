@@ -3,12 +3,14 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from loguru import logger
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
-from app.api.auth import router as auth_router
-from app.api.notes import router as notes_router
+from app.api.auth import router as auth_router, limiter
+from app.api.notes import router as notes_router, upload_limiter
 from app.api.mistakes import router as mistakes_router
 from app.api.quizzes import router as quizzes_router
 from app.api.mindmaps import router as mindmaps_router
@@ -16,6 +18,7 @@ from app.api.analytics import router as analytics_router
 from app.core.config import get_settings
 from app.core.database import engine, Base
 from app.utils.logging import setup_logging
+from app.middleware.csrf import CSRFMiddleware
 
 settings = get_settings()
 
@@ -45,6 +48,11 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Set up rate limiting
+app.state.limiter = limiter
+app.state.upload_limiter = upload_limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
@@ -53,6 +61,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add CSRF protection
+app.add_middleware(CSRFMiddleware)
 
 # Include routers
 app.include_router(auth_router)

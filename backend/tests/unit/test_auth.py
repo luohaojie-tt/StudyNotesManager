@@ -56,7 +56,7 @@ class TestPasswordHashing:
 class TestJWTToken:
     """Test JWT token creation and verification."""
 
-    test_create_access_token_default_expiration(self, valid_password):
+    def test_create_access_token_default_expiration(self, valid_password):
         """Test JWT access token creation with default expiration."""
         from app.utils.jwt import create_access_token
 

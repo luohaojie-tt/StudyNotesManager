@@ -2,6 +2,11 @@
 fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
+slowapi==0.1.9
+
+# File validation
+python-magic-bin==0.4.14
+pyclamd==0.4.0
 
 # Database
 sqlalchemy==2.0.23

@@ -1,5 +1,6 @@
 """Authentication dependencies."""
 from typing import Optional
+from uuid import UUID
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -51,7 +52,9 @@ async def get_current_user(
 
     auth_service = AuthService(db)
     try:
-        user = await auth_service.get_current_user(user_id)
+        user = await auth_service.get_user_by_id(UUID(user_id))
+        if user is None:
+            raise ValueError("User not found")
         return user, payload
     except ValueError as e:
         raise HTTPException(

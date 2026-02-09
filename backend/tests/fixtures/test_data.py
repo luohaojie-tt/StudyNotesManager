@@ -8,7 +8,6 @@ import string
 from uuid import uuid4
 from faker import Faker
 import pytest
-from tests.fixtures.test_data import valid_password, valid_email, valid_full_name, test_data
 
 
 fake = Faker()

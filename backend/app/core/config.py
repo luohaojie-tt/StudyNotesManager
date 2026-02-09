@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     REDIS_DB: int = 0
 
     # JWT
-    JWT_SECRET_KEY: str = Field(default="dev-jwt-secret-key-change-in-production")
+    JWT_SECRET_KEY: str = Field(default="")
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
@@ -101,6 +101,17 @@ class Settings(BaseSettings):
         """Parse allowed extensions from string or list"""
         if isinstance(v, str):
             return [ext.strip() for ext in v.split(",")]
+        return v
+
+    @field_validator("JWT_SECRET_KEY")
+    @classmethod
+    def validate_jwt_secret(cls, v: str) -> str:
+        """Validate JWT secret key is strong enough"""
+        if len(v) < 32:
+            raise ValueError(
+                "JWT_SECRET_KEY must be at least 32 characters long. "
+                "Generate a strong key: python -c 'import secrets; print(secrets.token_urlsafe(32))'"
+            )
         return v
 
 
