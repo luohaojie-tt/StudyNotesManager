@@ -2,7 +2,9 @@
 import uuid
 from typing import Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
@@ -11,11 +13,16 @@ from app.schemas.note import NoteListResponse, NoteResponse, NoteUploadResponse
 from app.services.note_service import NoteService
 from app.services.ocr_service import ocr_service
 from app.services.oss_service import oss_service
+from app.services.virus_scan_service import virus_scan_service
 
+# Rate limiter: 10 requests per minute per IP for uploads
+upload_limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/api/notes", tags=["Notes"])
 
 @router.post("/upload", response_model=NoteUploadResponse)
+@upload_limiter.limit("10/minute")
 async def upload_note(
+    request: Request,
     file: UploadFile = File(...),
     title: str = Form(...),
     category_id: Optional[str] = Form(None),
@@ -28,6 +35,14 @@ async def upload_note(
     
     user, _ = current_user
     try:
+        # Validate Content-Length header first
+        content_length = file.size if hasattr(file, 'size') else None
+        if content_length and content_length > settings.MAX_UPLOAD_SIZE:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File size exceeds maximum allowed size of {settings.MAX_UPLOAD_SIZE} bytes",
+            )
+        
         file_content = await file.read()
         file_size = len(file_content)
         content_type = file.content_type
@@ -39,7 +54,7 @@ async def upload_note(
                 detail=f"File size exceeds maximum allowed size of {settings.MAX_UPLOAD_SIZE} bytes",
             )
         
-        # Validate file type
+        # Validate file type using extension
         if not file.filename:
             raise HTTPException(
                 status_code=400,
@@ -51,6 +66,38 @@ async def upload_note(
             raise HTTPException(
                 status_code=400,
                 detail=f"File type '{file_ext}' is not allowed. Allowed types: {', '.join(settings.ALLOWED_EXTENSIONS)}",
+            )
+        
+        # Validate MIME type using magic numbers
+        try:
+            import magic
+            mime = magic.from_buffer(file_content, mime=True)
+            
+            # Define allowed MIME types
+            allowed_mimes = {
+                'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/bmp', 'image/webp',
+                'application/pdf'
+            }
+            
+            if mime not in allowed_mimes:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Invalid file content type '{mime}'. File may be corrupted or renamed.",
+                )
+        except ImportError:
+            # Fallback: python-magic not available, skip validation
+            pass
+        except Exception as e:
+            # If magic detection fails, log but continue
+            from loguru import logger
+            logger.warning(f"MIME type detection failed: {e}")
+        
+        # Virus scanning
+        scan_result = await virus_scan_service.scan_file(file_content, file.filename)
+        if scan_result["found_infected"]:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File infected with viruses: {', '.join(scan_result['viruses'])}",
             )
         
         # Upload to OSS

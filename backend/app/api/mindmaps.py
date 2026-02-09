@@ -3,6 +3,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
@@ -13,6 +14,20 @@ from app.services.deepseek_service import DeepSeekService
 router = APIRouter(prefix="/api/mindmaps", tags=["Mindmaps"])
 
 
+class MindmapGenerateRequest(BaseModel):
+    """Request model for mindmap generation."""
+
+    max_levels: int = Field(default=5, ge=1, le=10, description="Maximum hierarchy levels (1-10)")
+
+    @field_validator("max_levels")
+    @classmethod
+    def validate_max_levels(cls, v: int) -> int:
+        """Validate max_levels is within safe range."""
+        if not 1 <= v <= 10:
+            raise ValueError("max_levels must be between 1 and 10")
+        return v
+
+
 @router.post("/generate/{note_id}")
 async def generate_mindmap(
     note_id: str,
@@ -20,7 +35,18 @@ async def generate_mindmap(
     current_user: tuple = Depends(get_current_active_user),
     db: AsyncSession = Depends(get_db),
 ):
-    """Generate a mindmap from a note using AI."""
+    """Generate a mindmap from a note using AI.
+
+    Args:
+        note_id: Note ID
+        max_levels: Maximum hierarchy levels (1-10)
+    """
+    # Validate max_levels parameter
+    if not 1 <= max_levels <= 10:
+        raise HTTPException(
+            status_code=400,
+            detail="max_levels must be between 1 and 10"
+        )
     user, _ = current_user
     try:
         # Get note content

@@ -174,6 +174,43 @@ class DeepSeekService:
             logger.error(f"Mindmap generation failed: {e}")
             raise
 
+    def _sanitize_for_prompt(self, text: str) -> str:
+        """Sanitize user input to prevent prompt injection.
+
+        Args:
+            text: User input text
+
+        Returns:
+            Sanitized text
+        """
+        # Remove potential prompt injection patterns
+        import re
+
+        # Remove common injection patterns
+        injection_patterns = [
+            r"(?i)ignore\s+(all\s+)?(previous|above|the)\s+instructions",
+            r"(?i)disregard\s+(all\s+)?(previous|above|the)\s+instructions",
+            r"(?i)forget\s+(all\s+)?(previous|above|the)\s+instructions",
+            r"(?i)override\s+(all\s+)?(previous|above|the)\s+instructions",
+            r"(?i)system\s*:",
+            r"(?i)assistant\s*:",
+            r"(?i)\[INST\]",
+            r"(?i)\[/INST\]",
+            r"(?i)<<(.*?>>)",
+            r"(?i)###\s*(Instruction|Response|System|Assistant)",
+        ]
+
+        sanitized = text
+        for pattern in injection_patterns:
+            sanitized = re.sub(pattern, "[REDACTED]", sanitized)
+
+        # Limit length to prevent DoS
+        max_length = 10000
+        if len(sanitized) > max_length:
+            sanitized = sanitized[:max_length] + "..."
+
+        return sanitized
+
     def _get_mindmap_prompt(
         self,
         note_title: str,
@@ -190,12 +227,16 @@ class DeepSeekService:
         Returns:
             Formatted prompt
         """
+        # Sanitize inputs to prevent prompt injection
+        safe_title = self._sanitize_for_prompt(note_title)
+        safe_content = self._sanitize_for_prompt(note_content)
+
         return f"""You are an expert at creating structured mind maps from study notes. Analyze the following note and create a hierarchical mind map.
 
-Note Title: {note_title}
+Note Title: {safe_title}
 
 Note Content:
-{note_content}
+{safe_content}
 
 Requirements:
 1. Create a mind map with maximum {max_levels} hierarchy levels

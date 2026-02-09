@@ -27,6 +27,40 @@ class OSSService:
             logger.warning("OSS credentials not configured, using mock mode")
             self.bucket = None
 
+    def _sanitize_filename(self, filename: str) -> str:
+        """Sanitize filename to prevent path traversal attacks.
+
+        Args:
+            filename: Original filename
+
+        Returns:
+            Sanitized safe filename
+        """
+        import re
+        import os
+
+        # Remove any path components
+        filename = os.path.basename(filename)
+
+        # Remove dangerous characters
+        filename = re.sub(r'[<>:"|?*\x00-\x1f]', '', filename)
+
+        # Remove directory traversal patterns
+        filename = re.sub(r'\.\.', '', filename)
+        filename = re.sub(r'~', '', filename)
+
+        # Limit length
+        max_length = 255
+        if len(filename) > max_length:
+            name, ext = os.path.splitext(filename)
+            filename = name[:max_length - len(ext)] + ext
+
+        # Ensure filename is not empty
+        if not filename:
+            filename = "unnamed_file"
+
+        return filename
+
     async def upload_file(
         self,
         file_content: bytes,
@@ -52,11 +86,14 @@ class OSSService:
             return f"https://mock-oss-url/{filename}"
 
         try:
+            # Sanitize filename to prevent path traversal
+            safe_filename = self._sanitize_filename(filename)
+
             # Generate unique filename
             import uuid
             from datetime import datetime
 
-            ext = filename.rsplit(".", 1)[-1] if "." in filename else ""
+            ext = safe_filename.rsplit(".", 1)[-1] if "." in safe_filename else ""
             unique_filename = (
                 f"notes/{datetime.utcnow().strftime('%Y%m%d')}/"
                 f"{uuid.uuid4()}.{ext}"
