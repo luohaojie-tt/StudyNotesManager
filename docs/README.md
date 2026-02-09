@@ -39,6 +39,10 @@
 - [项目完成报告](./08-reports/项目完成报告.md) - 31%开发完成情况
 - [最终状态报告](./08-reports/最终状态报告.md) - 详细状态说明
 
+### 👥 [09-工作流与规范](./09-workflow/)
+- [Git工作流](./09-workflow/GIT_WORKFLOW.md) - Git分支策略、Commit规范
+- [Team规范](./09-workflow/TEAMMATES_GUIDELINES.md) - teammates工作规范和检查清单
+
 ---
 
 ## 🗂️ 文档说明
@@ -54,6 +58,7 @@
 - **06-testing**: 测试相关文档
 - **07-deployment**: 部署和运维文档
 - **08-reports**: 完成报告和总结
+- **09-workflow**: 工作流程和团队规范
 
 ### 文档维护规范
 
