@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.quiz import Quiz, QuizQuestion
 from app.models.mindmap import KnowledgePoint
 from app.services.deepseek_service import DeepSeekService
+from app.services.quiz_quality_service import QuizQualityValidator
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -168,7 +169,7 @@ class QuizGenerationService:
         question_types: List[str],
         difficulty: str,
     ) -> List[QuizQuestion]:
-        """Generate questions for knowledge points.
+        """Generate questions for knowledge points with quality validation.
 
         Args:
             quiz_id: Quiz ID
@@ -180,29 +181,76 @@ class QuizGenerationService:
             List of generated questions
         """
         questions = []
+        quality_validator = QuizQualityValidator(self.db)
 
         for idx, kp in enumerate(knowledge_points):
-            try:
-                # Select question type for this knowledge point
-                q_type = question_types[idx % len(question_types)]
+            # Select question type for this knowledge point
+            q_type = question_types[idx % len(question_types)]
 
-                # Generate question using DeepSeek
-                question_data = await self._generate_single_question(
-                    knowledge_point=kp.text,
-                    question_type=q_type,
-                    difficulty=difficulty,
-                )
+            # Retry logic for quality validation
+            max_retries = settings.QUIZ_MAX_RETRIES
+            valid_question = None
 
-                # Create question record
+            for attempt in range(max_retries):
+                try:
+                    # Generate question using DeepSeek
+                    question_data = await self._generate_single_question(
+                        knowledge_point=kp.text,
+                        question_type=q_type,
+                        difficulty=difficulty,
+                    )
+
+                    # Check for duplicates with existing questions
+                    existing_questions = [q.question_text for q in questions]
+                    duplicates = await quality_validator.detect_duplicates(
+                        question_data["question_text"],
+                        existing_questions,
+                    )
+
+                    if duplicates:
+                        logger.warning(
+                            f"Duplicate detected for knowledge point {kp.id}, retrying... (attempt {attempt + 1}/{max_retries})"
+                        )
+                        continue
+
+                    # Validate quality
+                    validation_result = await quality_validator.validate_question(
+                        question_data=question_data,
+                        knowledge_point=kp.text,
+                        expected_difficulty=difficulty,
+                    )
+
+                    if not validation_result["is_valid"]:
+                        logger.warning(
+                            f"Question validation failed for knowledge point {kp.id}: {validation_result['reason']}. "
+                            f"Retrying... (attempt {attempt + 1}/{max_retries})"
+                        )
+                        continue
+
+                    # Question is valid
+                    valid_question = question_data
+                    break
+
+                except Exception as e:
+                    logger.error(
+                        f"Error generating question for knowledge point {kp.id} (attempt {attempt + 1}/{max_retries}): {e}"
+                    )
+                    if attempt == max_retries - 1:
+                        # Last attempt failed, skip this knowledge point
+                        logger.error(f"Failed to generate valid question for knowledge point {kp.id} after {max_retries} attempts")
+                        continue
+
+            # Create question record if valid
+            if valid_question:
                 question = QuizQuestion(
                     id=uuid.uuid4(),
                     quiz_id=quiz_id,
                     knowledge_point_id=kp.id,
-                    question_text=question_data["question_text"],
+                    question_text=valid_question["question_text"],
                     question_type=q_type,
-                    options=question_data.get("options"),
-                    correct_answer=question_data["correct_answer"],
-                    explanation=question_data.get("explanation"),
+                    options=valid_question.get("options"),
+                    correct_answer=valid_question["correct_answer"],
+                    explanation=valid_question.get("explanation"),
                     difficulty=difficulty,
                     order=idx + 1,
                 )
@@ -210,10 +258,7 @@ class QuizGenerationService:
                 self.db.add(question)
                 questions.append(question)
 
-            except Exception as e:
-                logger.error(f"Failed to generate question for knowledge point {kp.id}: {e}")
-                # Continue with next knowledge point
-
+        await quality_validator.close()
         return questions
 
     async def _generate_single_question(

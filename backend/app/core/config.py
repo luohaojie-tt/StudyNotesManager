@@ -65,6 +65,14 @@ class Settings(BaseSettings):
     MAX_TOKENS_PER_NOTE: int = 8000
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/v1"
 
+    # Quiz Generation
+    QUIZ_MAX_COUNT: int = 50
+    QUIZ_DEFAULT_COUNT: int = 10
+    QUIZ_MIN_COUNT: int = 1
+    QUIZ_QUALITY_THRESHOLD: float = 0.7
+    QUIZ_MAX_RETRIES: int = 3
+    QUIZ_DUPLICATE_THRESHOLD: float = 0.85
+
     # File Upload
     MAX_UPLOAD_SIZE: int = 10485760  # 10MB
     ALLOWED_EXTENSIONS: Union[str, List[str]] = Field(default="jpg,jpeg,png,pdf")
