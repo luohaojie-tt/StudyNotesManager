@@ -3,6 +3,7 @@ import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from loguru import logger
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,6 +20,49 @@ from app.services.virus_scan_service import virus_scan_service
 upload_limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/api/notes", tags=["Notes"])
 
+
+async def read_file_in_chunks(
+    file: UploadFile,
+    chunk_size: int = 8192,
+    max_size: int = 10485760
+) -> bytes:
+    """Read file in chunks to prevent memory exhaustion.
+
+    Args:
+        file: UploadFile to read
+        chunk_size: Size of each chunk in bytes
+        max_size: Maximum file size in bytes
+
+    Returns:
+        File content as bytes
+
+    Raises:
+        HTTPException: If file size exceeds max_size
+    """
+    content = b""
+    total_size = 0
+
+    while chunk := await file.read(chunk_size):
+        total_size += len(chunk)
+
+        if total_size > max_size:
+            raise HTTPException(
+                status_code=413,
+                detail=f"File size exceeds maximum allowed size of {max_size} bytes"
+            )
+
+        content += chunk
+        logger.debug(
+            f"Read {total_size} bytes of {file.filename}",
+            extra={
+                "filename": file.filename,
+                "bytes_read": total_size,
+                "action": "file_upload_progress"
+            }
+        )
+
+    return content
+
 @router.post("/upload", response_model=NoteUploadResponse)
 @upload_limiter.limit("10/minute")
 async def upload_note(
@@ -34,18 +78,52 @@ async def upload_note(
     from app.core.config import settings
     
     user, _ = current_user
+
+    logger.info(
+        "File upload started",
+        extra={
+            "user_id": str(user.id),
+            "filename": file.filename,
+            "action": "file_upload_start"
+        }
+    )
+
     try:
         # Validate Content-Length header first
         content_length = file.size if hasattr(file, 'size') else None
         if content_length and content_length > settings.MAX_UPLOAD_SIZE:
+            logger.warning(
+                "File too large from Content-Length",
+                extra={
+                    "user_id": str(user.id),
+                    "content_length": content_length,
+                    "max_size": settings.MAX_UPLOAD_SIZE,
+                    "action": "file_upload_size_exceeded"
+                }
+            )
             raise HTTPException(
                 status_code=413,
                 detail=f"File size exceeds maximum allowed size of {settings.MAX_UPLOAD_SIZE} bytes",
             )
-        
-        file_content = await file.read()
+
+        # Read file in chunks to prevent memory exhaustion
+        file_content = await read_file_in_chunks(
+            file,
+            chunk_size=8192,
+            max_size=settings.MAX_UPLOAD_SIZE
+        )
         file_size = len(file_content)
         content_type = file.content_type
+
+        logger.info(
+            "File read successfully",
+            extra={
+                "user_id": str(user.id),
+                "filename": file.filename,
+                "file_size": file_size,
+                "action": "file_read_complete"
+            }
+        )
         
         # Validate file size
         if file_size > settings.MAX_UPLOAD_SIZE:
@@ -107,11 +185,50 @@ async def upload_note(
             content_type=content_type,
         )
         
-        # OCR recognition
+        # OCR recognition with retry logic
         ocr_text = None
         ocr_confidence = None
         if content_type and content_type.startswith("image/"):
-            ocr_text, ocr_confidence = await ocr_service.recognize_text_accurate(file_content)
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    logger.info(
+                        f"OCR recognition attempt {attempt + 1}",
+                        extra={
+                            "user_id": str(user.id),
+                            "filename": file.filename,
+                            "attempt": attempt + 1,
+                            "action": "ocr_attempt"
+                        }
+                    )
+                    ocr_text, ocr_confidence = await ocr_service.recognize_text_accurate(file_content)
+                    break  # Success, exit retry loop
+                except Exception as e:
+                    if attempt == max_retries - 1:
+                        logger.error(
+                            f"OCR recognition failed after {max_retries} attempts",
+                            extra={
+                                "user_id": str(user.id),
+                                "filename": file.filename,
+                                "error": str(e),
+                                "action": "ocr_failed"
+                            }
+                        )
+                        # Continue without OCR rather than failing entirely
+                        ocr_text = None
+                        ocr_confidence = None
+                    else:
+                        logger.warning(
+                            f"OCR recognition attempt {attempt + 1} failed, retrying",
+                            extra={
+                                "user_id": str(user.id),
+                                "filename": file.filename,
+                                "error": str(e),
+                                "action": "ocr_retry"
+                            }
+                        )
+                        import asyncio
+                        await asyncio.sleep(1)  # Wait before retry
         
         # Determine file type
         if content_type and content_type.startswith("image/"):
