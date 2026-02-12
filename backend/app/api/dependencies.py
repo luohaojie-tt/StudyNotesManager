@@ -2,7 +2,7 @@
 from typing import Optional
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Cookie
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,17 +11,46 @@ from app.core.database import get_db
 from app.services.auth_service import AuthService
 from app.utils.jwt import verify_access_token
 
-security = HTTPBearer()
+security = HTTPBearer(auto_error=False)
+
+
+async def get_token_from_cookie_or_header(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    access_token: Optional[str] = Cookie(None),
+) -> str:
+    """Get JWT token from httpOnly cookie or Authorization header.
+
+    Args:
+        credentials: HTTP authorization credentials (from header)
+        access_token: Token from httpOnly cookie
+
+    Returns:
+        JWT token string
+
+    Raises:
+        HTTPException: If no token is provided
+    """
+    if access_token:
+        return access_token
+
+    if credentials:
+        return credentials.credentials
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Not authenticated",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
 
 
 async def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    token: str = Depends(get_token_from_cookie_or_header),
     db: AsyncSession = Depends(get_db),
 ) -> tuple:
     """Get current authenticated user.
 
     Args:
-        credentials: HTTP authorization credentials
+        token: JWT access token (from cookie or header)
         db: Database session
 
     Returns:
@@ -30,8 +59,6 @@ async def get_current_user(
     Raises:
         HTTPException: If authentication fails
     """
-    token = credentials.credentials
-
     try:
         payload = verify_access_token(token)
         user_id: str = payload.get("sub")

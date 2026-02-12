@@ -7,28 +7,53 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from httpx import AsyncClient
-from tests.fixtures.test_data import valid_password, valid_email, valid_full_name, test_data
-
+from tests.fixtures.test_data import test_data
 
 
 @pytest.fixture
-async def auth_headers(client: AsyncClient):
+def valid_password():
+    """Generate a valid password for testing."""
+    return test_data.random_password()
+
+
+@pytest.fixture
+def valid_email():
+    """Generate a valid email for testing."""
+    return test_data.random_email()
+
+
+@pytest.fixture
+def valid_full_name():
+    """Generate a valid full name for testing."""
+    return test_data.random_full_name()
+
+
+@pytest.fixture
+async def auth_headers(client: AsyncClient, valid_password, valid_email, valid_full_name):
     """Create authenticated user and return auth headers."""
-    # Register user
+    # First make a GET request to get CSRF cookie
+    response = await client.get("/health")
+
+    # Get CSRF token from cookies
+    csrf_token = response.cookies.get("csrf_token")
+
+    # Register user with CSRF token
     await client.post(
         "/api/auth/register",
+        headers={"X-CSRF-Token": csrf_token} if csrf_token else {},
         json={
-            "email": valid_email, "password": valid_password, "full_name": "Test User"
+            "email": valid_email, "password": valid_password, "full_name": valid_full_name
         }
     )
-    
-    # Login
+
+    # Login with CSRF token
     response = await client.post(
         "/api/auth/login",
+        headers={"X-CSRF-Token": csrf_token} if csrf_token else {},
         json={
             "email": valid_email, "password": valid_password, }
     )
-    
+
     token = response.json()["access_token"]
     return {"Authorization": f"Bearer {token}"}
 

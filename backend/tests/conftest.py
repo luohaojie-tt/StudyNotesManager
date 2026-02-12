@@ -17,6 +17,11 @@ from sqlalchemy.ext.asyncio import (
 )
 from sqlalchemy.pool import StaticPool
 
+# Import test data generators
+from tests.fixtures.test_data import test_data
+
+# Import all models first so they register with Base before tests run
+import app.models  # noqa: F401
 
 # Environment setup for testing
 os.environ["ENVIRONMENT"] = "test"

@@ -1,11 +1,15 @@
 """Authentication API routes."""
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from datetime import timedelta
+
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
+from fastapi.security import OAuth2PasswordRequestForm
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user
+from app.core.config import settings
 from app.core.database import get_db
 from app.models.user import User
 from app.schemas.auth import Token, UserLogin, UserRegister, UserResponse, UserWithTokenResponse
@@ -16,17 +20,47 @@ limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=UserWithTokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register", response_model=UserWithTokenResponse, status_code=status.HTTP_201_CREATED
+)
 @limiter.limit("5/minute")
-async def register(request: Request, user_data: UserRegister, db: AsyncSession = Depends(get_db)):
-    """Register a new user and return tokens."""
+async def register(
+    request: Request,
+    response: Response,
+    user_data: UserRegister,
+    db: AsyncSession = Depends(get_db),
+):
+    """Register a new user and set tokens in httpOnly cookies."""
     auth_service = AuthService(db)
     try:
         user = await auth_service.register_user(user_data)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-    
+
     tokens = auth_service.create_tokens(user)
+
+    # Set httpOnly cookie with access token
+    response.set_cookie(
+        key="access_token",
+        value=tokens["access_token"],
+        httponly=True,
+        secure=not settings.DEBUG,
+        samesite="lax",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+
+    # Set httpOnly cookie with refresh token
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens["refresh_token"],
+        httponly=True,
+        secure=not settings.DEBUG,
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        path="/",
+    )
+
     return UserWithTokenResponse(
         id=user.id,
         email=user.email,
@@ -41,19 +75,51 @@ async def register(request: Request, user_data: UserRegister, db: AsyncSession =
 
 @router.post("/login", response_model=Token)
 @limiter.limit("5/minute")
-async def login(request: Request, user_data: UserLogin, db: AsyncSession = Depends(get_db)):
-    """Login with email and password."""
+async def login(
+    request: Request,
+    response: Response,
+    user_data: UserLogin,
+    db: AsyncSession = Depends(get_db),
+):
+    """Login with email and password.
+
+    Sets JWT access token in httpOnly cookie for security.
+    """
     auth_service = AuthService(db)
     user = await auth_service.authenticate_user(user_data.email, user_data.password)
-    
+
     if not user:
         raise HTTPException(
             status_code=401,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    return auth_service.create_tokens(user)
+
+    tokens = auth_service.create_tokens(user)
+
+    # Set httpOnly cookie with access token
+    response.set_cookie(
+        key="access_token",
+        value=tokens["access_token"],
+        httponly=True,
+        secure=not settings.DEBUG,  # True in production
+        samesite="lax",
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+
+    # Set httpOnly cookie with refresh token
+    response.set_cookie(
+        key="refresh_token",
+        value=tokens["refresh_token"],
+        httponly=True,
+        secure=not settings.DEBUG,
+        samesite="lax",
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        path="/",
+    )
+
+    return tokens
 
 
 @router.get("/me", response_model=UserResponse)
@@ -127,28 +193,33 @@ async def refresh_token(
 
 @router.post("/logout")
 async def logout(
+    response: Response,
     current_user: tuple = Depends(get_current_active_user),
 ):
-    """Logout user and invalidate tokens.
-    
+    """Logout user and clear httpOnly cookies.
+
     Note: This is a simple implementation. For production, consider:
     - Adding tokens to a Redis blacklist
     - Implementing token versioning
     - Storing revoked tokens in database
-    
+
     Args:
+        response: FastAPI Response object
         current_user: Current authenticated user
-        
+
     Returns:
         Success message
     """
     user, _ = current_user
-    
+
+    # Clear httpOnly cookies by setting them to expire
+    response.delete_cookie(key="access_token", path="/")
+    response.delete_cookie(key="refresh_token", path="/")
+
     # TODO: Implement token blacklist/revocation
     # For now, we instruct the client to discard tokens
     # In production, add the token to a Redis set with expiration
-    
+
     return {
         "message": "Successfully logged out",
-        "detail": "Please discard your tokens on the client side",
     }

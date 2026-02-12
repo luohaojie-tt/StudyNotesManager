@@ -21,6 +21,9 @@ from app.core.database import engine, Base
 from app.utils.logging import setup_logging
 from app.middleware.csrf import CSRFMiddleware
 
+# Import all models so they register with Base
+import app.models  # noqa: F401
+
 settings = get_settings()
 
 # Setup logging
