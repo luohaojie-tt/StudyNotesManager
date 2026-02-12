@@ -15,6 +15,7 @@ from app.api.mistakes import router as mistakes_router
 from app.api.quizzes import router as quizzes_router
 from app.api.mindmaps import router as mindmaps_router
 from app.api.analytics import router as analytics_router
+from app.api.stats import router as stats_router
 from app.api.health import router as health_router
 from app.core.config import get_settings
 from app.core.database import engine, Base
@@ -66,9 +67,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Add CSRF protection
-app.add_middleware(CSRFMiddleware)
-
 # Include routers
 app.include_router(health_router)
 app.include_router(auth_router)
@@ -77,6 +75,7 @@ app.include_router(mistakes_router)
 app.include_router(quizzes_router)
 app.include_router(mindmaps_router)
 app.include_router(analytics_router)
+app.include_router(stats_router)
 
 @app.get("/")
 async def root() -> dict:

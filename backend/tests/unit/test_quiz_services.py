@@ -354,8 +354,8 @@ class TestQuizGradingService:
             service.db = mock_db
 
             result = await service._grade_fill_blank_answer(
-                user_answer="capital of France",
-                correct_answer="Paris is the capital"
+                user_answer="Paris is the capital of France",
+                correct_answer="Paris is the capital city"
             )
 
             # Should have high keyword overlap

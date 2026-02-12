@@ -3,12 +3,12 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Optional
 
-from sqlalchemy import func, and_, desc, case, literal_column
+from sqlalchemy import select, func, and_, desc, case, literal_column
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.note import Note
-from app.models.quiz import Quiz, QuizSession, QuizAnswer
+from app.models.quiz import Quiz, QuizSession, QuizAnswer, QuizQuestion
 from app.models.mistake import Mistake
 from app.models.share import StudySession
 from app.models.category import Category
@@ -55,7 +55,7 @@ class AnalyticsService:
             select(
                 func.coalesce(
                     func.sum(QuizSession.correct_count).cast(float) /
-                    func.nullif(func.sum(QuizSession.total_questions), 0),
+                    func.coalesce(func.sum(QuizSession.total_questions), 0),
                     0.0
                 )
             ).where(
@@ -150,14 +150,14 @@ class AnalyticsService:
         )
         total_mistakes = total_result.scalar() or 0
 
-        # Get common mistake topics (from knowledge_point tags or question_text)
+        # Get common mistake topics (from knowledge point tags or question text)
         common_topics_result = await self.db.execute(
             select(
-                Mistake.question_text.label("topic"),
+                Mistake.question.label("topic"),
                 func.count(Mistake.id).label("count"),
             )
             .where(Mistake.user_id == user_id)
-            .group_by(Mistake.question_text)
+            .group_by(Mistake.question)
             .order_by(desc("count"))
             .limit(10)
         )
@@ -173,25 +173,25 @@ class AnalyticsService:
                 "avg_mastery_level": 50.0,  # Default for new mistakes
             })
 
-        # Get mistakes by category
-        category_joins = await self.db.execute(
+        # Get mistakes by subject (Mistake model uses subject, not category_id)
+        # We'll aggregate by subject instead since there's no category foreign key
+        subject_result = await self.db.execute(
             select(
-                Category.id.label("category_id"),
-                Category.name.label("category_name"),
+                Mistake.subject.label("subject_name"),
                 func.count(Mistake.id).label("count"),
             )
-            .outerjoin(Mistake, Category.id == Mistake.category_id)
-            .where(Category.user_id == user_id)
-            .group_by(Category.id, Category.name)
+            .where(Mistake.user_id == user_id)
+            .group_by(Mistake.subject)
             .order_by(desc("count"))
         )
 
         by_category = []
-        for row in category_joins:
+        for row in subject_result:
             total = row.count or 0
+            # Map subject to category structure (using None for category_id)
             by_category.append({
-                "category_id": row.category_id,
-                "category_name": row.category_name,
+                "category_id": None,  # No category_id in Mistake model
+                "category_name": row.subject_name,
                 "count": total,
                 "error_rate": 1.0 if total > 0 else 0.0,
             })
@@ -212,7 +212,7 @@ class AnalyticsService:
 
             review_recommendations.append({
                 "mistake_id": mistake.id,
-                "question": mistake.question_text,
+                "question": mistake.question,
                 "subject": "General",  # Could be derived from tags
                 "mastery_level": 50,  # Default - could be stored in model
                 "mistake_count": mistake.mistake_count,

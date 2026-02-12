@@ -147,18 +147,34 @@ class QuizGenerationService:
         if len(sorted_points) <= count:
             return sorted_points
 
-        # Stratified sampling by level
+        # Stratified sampling by level with remainder handling
         selected = []
         levels = set(kp.level for kp in sorted_points)
+        num_levels = len(levels)
 
-        for level in sorted(levels, reverse=True):
+        # Calculate base count per level and remainder
+        base_count = count // num_levels
+        remainder = count % num_levels
+
+        # Select from each level (sorted by level descending)
+        for idx, level in enumerate(sorted(levels, reverse=True)):
             level_points = [kp for kp in sorted_points if kp.level == level]
-            # Select proportionally from each level
-            level_count = max(1, int(count * len(level_points) / len(sorted_points)))
+            # First 'remainder' levels get one extra
+            level_count = base_count + (1 if idx < remainder else 0)
+
+            # Don't select more than available at this level
+            level_count = min(level_count, len(level_points))
             selected.extend(level_points[:level_count])
 
-            if len(selected) >= count:
-                break
+        # Fallback: if we still don't have enough, add from highest levels
+        if len(selected) < count and len(selected) < len(sorted_points):
+            remaining_needed = count - len(selected)
+            already_selected_ids = set(kp.id for kp in selected)
+            for kp in sorted_points:
+                if len(selected) >= count:
+                    break
+                if kp.id not in already_selected_ids:
+                    selected.append(kp)
 
         return selected[:count]
 
