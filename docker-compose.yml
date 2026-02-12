@@ -1,0 +1,138 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: study_notes_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: studynotes
+      POSTGRES_PASSWORD: studynotes123
+      POSTGRES_DB: studynotes
+      POSTGRES_HOST: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U studynotes", "|", "grep", "-q", "accepted", "connection"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: study_notes_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: study_notes_backend
+    restart: unless-stopped
+    depends_on:
+      - postgres
+      - redis
+    environment:
+      # Database
+      - DATABASE_URL=postgresql://studynotes:studynotes123@postgres:5432/studynotes
+      - POSTGRES_USER=studynotes
+      - POSTGRES_PASSWORD=studynotes123
+      - POSTGRES_DB=studynotes
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+
+      # Redis
+      - REDIS_URL=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+
+      # Application
+      - APP_NAME=StudyNotesManager
+      - APP_VERSION=1.0.0
+      - DEBUG=False
+
+      # JWT
+      - JWT_SECRET_KEY=change-in-production-use-strong-key
+      - JWT_ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=30
+      - REFRESH_TOKEN_EXPIRE_DAYS=7
+
+      # CORS
+      - CORS_ORIGINS=["http://localhost:3000","http://localhost:8000","http://frontend:3000"]
+
+      # Baidu OCR
+      - BAIDU_OCR_APP_ID=${BAIDU_OCR_APP_ID}
+      - BAIDU_OCR_API_KEY=${BAIDU_OCR_API_KEY}
+      - BAIDU_OCR_SECRET_KEY=${BAIDU_OCR_SECRET_KEY}
+
+      # Aliyun OSS
+      - ALIYUN_OSS_ACCESS_KEY_ID=${ALIYUN_OSS_ACCESS_KEY_ID}
+      - ALIYUN_OSS_ACCESS_KEY_SECRET=${ALIYUN_OSS_ACCESS_KEY_SECRET}
+      - ALIYUN_OSS_BUCKET_NAME=${ALIYUN_OSS_BUCKET_NAME}
+      - ALIYUN_OSS_ENDPOINT=oss-cn-hangzhou.aliyuncs.com
+
+      # DeepSeek AI
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - DEEPSEEK_API_BASE=https://api.deepseek.com/v1
+
+      # File Upload
+      - MAX_UPLOAD_SIZE=10485760
+      - ALLOWED_EXTENSIONS=["jpg","jpeg","png","pdf"]
+
+      # Logging
+      - LOG_LEVEL=INFO
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/logs:/app/logs
+      - ./backend/uploads:/app/uploads
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Frontend (Development mode)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: study_notes_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000/api
+      - NEXT_PUBLIC_ENABLE_MINDMAP=true
+      - NEXT_PUBLIC_ENABLE_QUIZ=true
+      - NEXT_PUBLIC_ENABLE_ANALYTICS=true
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend/.next:/app/.next
+      - ./frontend/node_modules:/app/node_modules
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+  redis_data:
