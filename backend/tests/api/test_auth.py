@@ -3,7 +3,7 @@ Authentication API integration tests.
 """
 import pytest
 from httpx import AsyncClient
-from tests.fixtures.test_data import valid_password, valid_email, valid_full_name, test_data
+from tests.fixtures.test_data import test_data
 
 
 
@@ -14,28 +14,33 @@ class TestAuthRegisterEndpoint:
 
     async def test_register_new_user_success(self, client: AsyncClient):
         """Test successful user registration returns tokens."""
+        password = test_data.random_password()
+        email = test_data.random_email()
+
         response = await client.post(
             "/api/auth/register",
             json={
-                "email": valid_email, "password": valid_password, "full_name": "Test User",
+                "email": email,
+                "password": password,
+                "full_name": "Test User",
             },
         )
-        
+
         assert response.status_code == 201
         data = response.json()
-        
+
         # Verify response structure
         assert "access_token" in data
         assert "refresh_token" in data
         assert "token_type" in data
         assert "expires_in" in data
-        
+
         # Verify user data
-        assert data["email"] == "test@example.com"
+        assert data["email"] == email
         assert data["full_name"] == "Test User"
         assert data["subscription_tier"] == "free"
         assert data["is_verified"] is False
-        
+
         # Verify token structure
         assert data["token_type"] == "bearer"
         assert data["expires_in"] == 900
@@ -44,17 +49,19 @@ class TestAuthRegisterEndpoint:
 
     async def test_register_duplicate_email_returns_400(self, client: AsyncClient):
         """Test registering with duplicate email returns error."""
+        password = test_data.random_password()
         user_data = {
             "email": "duplicate@example.com",
-            "password": valid_password, "full_name": "Test User",
+            "password": password,
+            "full_name": "Test User",
         }
-        
+
         # First registration
         await client.post("/api/auth/register", json=user_data)
-        
+
         # Duplicate registration
         response = await client.post("/api/auth/register", json=user_data)
-        
+
         assert response.status_code == 400
         data = response.json()
         assert "detail" in data
@@ -63,13 +70,12 @@ class TestAuthRegisterEndpoint:
     async def test_register_weak_password_returns_422(self, client: AsyncClient):
         """Test registration with weak password fails validation."""
         weak_passwords = [
-            "short",           # Too short
-            "nouppercase123",  # No uppercase
-            "NOLOWERCASE123",  # No lowercase
-            "NoDigits!",       # No digits
-            "12345678",        # Only digits
+            "short",      # Too short (< 8 chars)
+            "noletter1",  # No letters
+            "onlyletters",  # No digits
+            "12345678",    # Only digits
         ]
-        
+
         for password in weak_passwords:
             response = await client.post(
                 "/api/auth/register",
@@ -87,36 +93,44 @@ class TestAuthRegisterEndpoint:
             "/api/auth/register",
             json={
                 "email": "not-an-email",
-                "password": valid_password, "full_name": "Test User",
+                "password": test_data.random_password(),
+                "full_name": "Test User",
             },
         )
         assert response.status_code == 422
 
     async def test_register_missing_required_fields(self, client: AsyncClient):
         """Test registration without required fields fails."""
+        password = test_data.random_password()
+        email = test_data.random_email()
+
         # Missing email
         response = await client.post(
             "/api/auth/register",
             json={
-                "password": valid_password, "full_name": "Test User",
+                "password": password,
+                "full_name": "Test User",
             },
         )
         assert response.status_code == 422
-        
+
         # Missing password
         response = await client.post(
             "/api/auth/register",
             json={
-                "email": valid_email, "full_name": "Test User",
+                "email": email,
+                "full_name": "Test User",
             },
         )
         assert response.status_code == 422
-        
+
         # Missing full_name
         response = await client.post(
             "/api/auth/register",
             json={
-                "email": valid_email, "password": valid_password, },
+                "email": email,
+                "password": password,
+            },
         )
         assert response.status_code == 422
 
@@ -128,32 +142,37 @@ class TestAuthLoginEndpoint:
 
     async def test_login_valid_credentials_returns_tokens(self, client: AsyncClient):
         """Test login with valid credentials returns tokens."""
+        password = test_data.random_password()
+        email = "login@example.com"
+
         # Register user first
         await client.post(
             "/api/auth/register",
             json={
-                "email": "login@example.com",
-                "password": valid_password, "full_name": "Test User",
+                "email": email,
+                "password": password,
+                "full_name": "Test User",
             },
         )
-        
+
         # Login
         response = await client.post(
             "/api/auth/login",
             json={
-                "email": "login@example.com",
-                "password": valid_password, },
+                "email": email,
+                "password": password,
+            },
         )
-        
+
         assert response.status_code == 200
         data = response.json()
-        
+
         # Verify response structure
         assert "access_token" in data
         assert "refresh_token" in data
         assert "token_type" in data
         assert "expires_in" in data
-        
+
         # Verify token structure
         assert data["token_type"] == "bearer"
         assert data["expires_in"] == 900
@@ -164,9 +183,10 @@ class TestAuthLoginEndpoint:
             "/api/auth/login",
             json={
                 "email": "nonexistent@example.com",
-                "password": valid_password, },
+                "password": test_data.random_password(),
+            },
         )
-        
+
         assert response.status_code == 401
         data = response.json()
         assert "detail" in data
@@ -197,40 +217,48 @@ class TestAuthLoginEndpoint:
 
     async def test_login_missing_credentials(self, client: AsyncClient):
         """Test login without credentials fails validation."""
+        password = test_data.random_password()
+        email = test_data.random_email()
+
         # Missing email
         response = await client.post(
             "/api/auth/login",
-            json={"password": valid_password, },
+            json={"password": password},
         )
         assert response.status_code == 422
-        
+
         # Missing password
         response = await client.post(
             "/api/auth/login",
-            json={"email": valid_email, },
+            json={"email": email},
         )
         assert response.status_code == 422
 
     async def test_login_updates_last_login_at(self, client: AsyncClient):
         """Test that login updates user's last_login_at timestamp."""
+        password = test_data.random_password()
+        email = "login@example.com"
+
         # Register user
         register_response = await client.post(
             "/api/auth/register",
             json={
-                "email": "login@example.com",
-                "password": valid_password, "full_name": "Test User",
+                "email": email,
+                "password": password,
+                "full_name": "Test User",
             },
         )
         original_last_login = register_response.json().get("last_login_at")
-        
+
         # Login
         await client.post(
             "/api/auth/login",
             json={
-                "email": "login@example.com",
-                "password": valid_password, },
+                "email": email,
+                "password": password,
+            },
         )
-        
+
         # Get user info to check last_login_at was updated
         # Note: This would require implementing /api/auth/me with proper JWT auth
         # For now, we're testing that the endpoint exists and doesn't error
@@ -270,30 +298,37 @@ class TestAuthEndpointResponseHeaders:
         response = await client.post(
             "/api/auth/register",
             json={
-                "email": valid_email, "password": valid_password, "full_name": "Test User",
+                "email": test_data.random_email(),
+                "password": test_data.random_password(),
+                "full_name": "Test User",
             },
         )
-        
+
         assert "application/json" in response.headers.get("content-type", "")
 
     async def test_login_returns_json_content_type(self, client: AsyncClient):
         """Test login endpoint returns JSON content type."""
+        password = test_data.random_password()
+        email = "login@example.com"
+
         # Register user first
         await client.post(
             "/api/auth/register",
             json={
-                "email": "login@example.com",
-                "password": valid_password, "full_name": "Test User",
+                "email": email,
+                "password": password,
+                "full_name": "Test User",
             },
         )
-        
+
         response = await client.post(
             "/api/auth/login",
             json={
-                "email": "login@example.com",
-                "password": valid_password, },
+                "email": email,
+                "password": password,
+            },
         )
-        
+
         assert "application/json" in response.headers.get("content-type", "")
 
 
@@ -325,7 +360,9 @@ class TestAuthEndpointErrorHandling:
         response = await client.post(
             "/api/auth/register",
             json={
-                "email": valid_email, "password": valid_password, "full_name": "Test User",
+                "email": test_data.random_email(),
+                "password": test_data.random_password(),
+                "full_name": "Test User",
                 "extra_field": "should_be_ignored",
             },
         )

@@ -2,8 +2,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, CheckConstraint
-from sqlalchemy.dialects.postgresql import UUID, Decimal
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, CheckConstraint, Numeric
+from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -60,7 +60,7 @@ class CategoryRelation(Base):
     relation_type = Column(String(20), nullable=False)  # related, independent
 
     # Weight (for calculating association strength)
-    weight = Column(Decimal(3, 2), default=0.5)
+    weight = Column(Numeric(3, 2), default=0.5)
 
     created_at = Column(DateTime, default=datetime.utcnow)
 

@@ -23,7 +23,8 @@ class Quiz(Base):
     # Quiz configuration
     question_count = Column(Integer, nullable=False)
     difficulty = Column(Enum("easy", "medium", "hard", name="quiz_difficulty"), default="medium")
-    question_types = Column(ARRAY(String), nullable=False)  # ["choice", "fill_blank", "short_answer"]
+    # Use JSON instead of ARRAY for SQLite compatibility
+    question_types = Column(JSON, nullable=False)  # ["choice", "fill_blank", "short_answer"]
 
     # Status
     status = Column(Enum("generating", "ready", "completed", name="quiz_status"), default="generating")

@@ -2,14 +2,15 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, Numeric, ARRAY, Boolean
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, Numeric, Boolean, JSON, LargeBinary
+from sqlalchemy.dialects.postgresql import UUID
 try:
     from pgvector.sqlalchemy import Vector
+    HAS_PGVECTOR = True
 except ImportError:
-    # Fallback if pgvector not installed
-    from sqlalchemy import ARRAY
-    Vector = ARRAY
+    # Fallback if pgvector not installed - use LargeBinary for embeddings
+    HAS_PGVECTOR = False
+    Vector = None
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -34,14 +35,16 @@ class Note(Base):
     ocr_text = Column(Text, nullable=True)
     ocr_confidence = Column(Numeric(3, 2), nullable=True)
 
-    # Vector embedding
-    embedding = Column(Vector(1536), nullable=True)
+    # Vector embedding - use LargeBinary for SQLite compatibility
+    # Note: pgvector's Vector type doesn't work with SQLite, so we store as binary
+    embedding = Column(LargeBinary, nullable=True)
 
     # Category
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True)
 
     # Tags
-    tags = Column(ARRAY(String), default=list)
+    # Use JSON instead of ARRAY for SQLite compatibility
+    tags = Column(JSON, default=list)
 
     # Favorite
     is_favorited = Column(Boolean, default=False)
@@ -55,7 +58,8 @@ class Note(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Metadata (use meta_data to avoid SQLAlchemy reserved word)
-    meta_data = Column(JSONB, default=dict)
+    # Use JSON instead of JSONB for SQLite compatibility
+    meta_data = Column(JSON, default=dict)
 
     # Relationships
     user = relationship("User", back_populates="notes")

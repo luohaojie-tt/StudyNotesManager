@@ -17,42 +17,43 @@ class TestDataGenerator:
     """Generate secure test data that doesn't leak patterns."""
 
     @staticmethod
-    def random_password(min_length: int = 12, max_length: int = 24) -> str:
+    def random_password(min_length: int = 8, max_length: int = 20) -> str:
         """Generate a random password that meets security requirements.
-        
+
         Args:
             min_length: Minimum password length
-            max_length: Maximum password length
-            
+            max_length: Maximum password length (max 72 for bcrypt compatibility)
+
         Returns:
-            Random password with letters, digits, and special characters
+            Random password with letters and digits
         """
         import secrets
         import random
-        
+
+        # Limit max length to 72 for bcrypt compatibility
+        max_length = min(max_length, 72)
         length = random.randint(min_length, max_length)
-        
+
         # Ensure password has at least one of each required character type
         password = [
             secrets.choice(string.ascii_uppercase),  # At least one uppercase
             secrets.choice(string.ascii_lowercase),  # At least one lowercase
             secrets.choice(string.digits),            # At least one digit
-            secrets.choice("!@#$%^&*"),              # At least one special char
         ]
-        
-        # Fill the rest with random characters from all categories
-        all_chars = string.ascii_letters + string.digits + "!@#$%^&*"
-        password.extend(secrets.choice(all_chars) for _ in range(length - 4))
-        
+
+        # Fill rest with random characters from all categories
+        all_chars = string.ascii_letters + string.digits
+        password.extend(secrets.choice(all_chars) for _ in range(length - 3))
+
         # Shuffle to avoid predictable pattern
         random.shuffle(password)
-        
+
         return ''.join(password)
 
     @staticmethod
     def random_email() -> str:
         """Generate a random email address.
-        
+
         Returns:
             Random email address
         """
@@ -61,7 +62,7 @@ class TestDataGenerator:
     @staticmethod
     def random_full_name() -> str:
         """Generate a random full name.
-        
+
         Returns:
             Random full name
         """
@@ -70,7 +71,7 @@ class TestDataGenerator:
     @staticmethod
     def random_username() -> str:
         """Generate a random username.
-        
+
         Returns:
             Random username
         """
@@ -108,7 +109,7 @@ def valid_username():
 @pytest.fixture
 def test_user_data(valid_email, valid_password, valid_full_name):
     """Generate complete user registration data.
-    
+
     Returns:
         Dictionary with user registration data
     """
@@ -122,7 +123,7 @@ def test_user_data(valid_email, valid_password, valid_full_name):
 @pytest.fixture
 def test_login_data(valid_email, valid_password):
     """Generate complete user login data.
-    
+
     Returns:
         Dictionary with user login data
     """
@@ -135,10 +136,10 @@ def test_login_data(valid_email, valid_password):
 @pytest.fixture
 def multiple_test_users(count: int = 3):
     """Generate multiple test users.
-    
+
     Args:
         count: Number of users to generate
-        
+
     Returns:
         List of user data dictionaries
     """

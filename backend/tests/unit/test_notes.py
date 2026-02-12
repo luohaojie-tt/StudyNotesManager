@@ -26,7 +26,7 @@ class TestNoteService:
         return session
 
     @pytest.fixture
-    test_user(self, valid_password):
+    def test_user(self, valid_password):
         """Create test user."""
         from app.models.user import User
 
@@ -269,7 +269,7 @@ class TestNoteValidation:
     """Test note validation and business logic."""
 
     @pytest.mark.asyncio
-    async test_note_title_required(self, valid_password):
+    async def test_note_title_required(self, valid_password):
         """Test that note title is required."""
         from app.schemas.note import NoteCreate
         from pydantic import ValidationError
@@ -282,7 +282,7 @@ class TestNoteValidation:
             )
 
     @pytest.mark.asyncio
-    async test_note_subject_validation(self, valid_password):
+    async def test_note_subject_validation(self, valid_password):
         """Test note subject validation."""
         from app.schemas.note import NoteCreate
         from pydantic import ValidationError
@@ -299,7 +299,7 @@ class TestNoteValidation:
             assert note.subject == subject
 
     @pytest.mark.asyncio
-    async test_note_tags_format(self, valid_password):
+    async def test_note_tags_format(self, valid_password):
         """Test that tags are properly formatted."""
         from app.schemas.note import NoteCreate
 
@@ -314,7 +314,7 @@ class TestNoteValidation:
         assert "tag1" in note.tags
 
     @pytest.mark.asyncio
-    async test_note_content_length_limit(self, valid_password):
+    async def test_note_content_length_limit(self, valid_password):
         """Test note content length limit."""
         from app.schemas.note import NoteCreate
         from pydantic import ValidationError

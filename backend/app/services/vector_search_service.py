@@ -3,8 +3,6 @@
 import os
 from typing import Any, Dict, List, Optional
 
-import chromadb
-from chromadb.config import Settings
 from loguru import logger
 from openai import AsyncOpenAI
 
@@ -12,20 +10,30 @@ from app.core.config import get_settings
 
 settings = get_settings()
 
+# Lazy import of chromadb to avoid Python 3.14 compatibility issues during module loading
+# ChromaDB will only be imported when actually used
+chromadb = None
+try:
+    import chromadb as chromadb_module
+    chromadb = chromadb_module
+except Exception as e:
+    logger.warning(f"ChromaDB import failed (Python 3.14 compatibility issue): {e}")
+    logger.warning("Vector search features will be disabled")
+
 
 class VectorSearchService:
     """Service for vector search using ChromaDB and OpenAI embeddings."""
 
     def __init__(self) -> None:
         """Initialize vector search service."""
-        # Initialize ChromaDB client
-        self.chroma_client = chromadb.PersistentClient(
-            path=settings.CHROMA_PERSIST_DIR,
-            settings=Settings(
-                anonymized_telemetry=False,
-                allow_reset=True,
-            ),
-        )
+        # Initialize ChromaDB client only if available
+        if chromadb is not None:
+            self.chroma_client = chromadb.PersistentClient(
+                path=settings.CHROMA_PERSIST_DIR,
+            )
+        else:
+            self.chroma_client = None
+            logger.warning("ChromaDB not available, vector search disabled")
 
         # Initialize OpenAI client for embeddings
         self.openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
@@ -36,6 +44,10 @@ class VectorSearchService:
 
     async def initialize(self) -> None:
         """Initialize collection (call this on startup)."""
+        if self.chroma_client is None:
+            logger.warning("Cannot initialize ChromaDB: not available")
+            return
+
         try:
             # Get or create collection
             self.collection = self.chroma_client.get_or_create_collection(
@@ -60,6 +72,10 @@ class VectorSearchService:
             content: Note text content
             metadata: Additional metadata (title, page, etc.)
         """
+        if self.chroma_client is None or self.collection is None:
+            logger.warning("Cannot index note: ChromaDB not available")
+            return
+
         try:
             # Split content into chunks (for better retrieval)
             chunks = self._chunk_text(content, chunk_size=500, overlap=50)
@@ -111,6 +127,10 @@ class VectorSearchService:
         Returns:
             List of similar content with metadata
         """
+        if self.chroma_client is None or self.collection is None:
+            logger.warning("Cannot search: ChromaDB not available")
+            return []
+
         try:
             # Generate query embedding
             query_embedding = await self._generate_embedding(query)
@@ -187,6 +207,10 @@ class VectorSearchService:
         Args:
             note_id: Note ID
         """
+        if self.chroma_client is None or self.collection is None:
+            logger.warning("Cannot delete note: ChromaDB not available")
+            return
+
         try:
             # Get all IDs for this note
             results = self.collection.get(where={"note_id": note_id})

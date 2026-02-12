@@ -185,7 +185,7 @@ class TestMindmapService:
 class TestMindmapFormatting:
     """Test mindmap data formatting and validation."""
 
-    test_validate_mindmap_structure(self, valid_password):
+    def test_validate_mindmap_structure(self, valid_password):
         """Test mindmap structure validation."""
         from app.services.mindmap_service import MindmapService
 
@@ -202,7 +202,7 @@ class TestMindmapFormatting:
         service = MindmapService(None)
         assert service.validate_mindmap(valid_mindmap) is True
 
-    test_validate_mindmap_missing_nodes(self, valid_password):
+    def test_validate_mindmap_missing_nodes(self, valid_password):
         """Test validation fails when nodes are missing."""
         from app.services.mindmap_service import MindmapService
 
@@ -214,7 +214,7 @@ class TestMindmapFormatting:
         service = MindmapService(None)
         assert service.validate_mindmap(invalid_mindmap) is False
 
-    test_validate_mindmap_orphaned_edges(self, valid_password):
+    def test_validate_mindmap_orphaned_edges(self, valid_password):
         """Test validation fails with orphaned edges."""
         from app.services.mindmap_service import MindmapService
 
@@ -230,7 +230,7 @@ class TestMindmapFormatting:
         service = MindmapService(None)
         assert service.validate_mindmap(invalid_mindmap) is False
 
-    test_format_mindmap_for_frontend(self, valid_password):
+    def test_format_mindmap_for_frontend(self, valid_password):
         """Test formatting mindmap for frontend consumption."""
         from app.services.mindmap_service import MindmapService
 

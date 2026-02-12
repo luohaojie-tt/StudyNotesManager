@@ -60,11 +60,17 @@ class Settings(BaseSettings):
 
     # OpenAI
     OPENAI_API_KEY: str = ""
+    EMBEDDING_MODEL: str = "text-embedding-ada-002"
 
     # Mindmap Generation
     MINDMAP_MAX_LEVELS: int = 5
     MAX_TOKENS_PER_NOTE: int = 8000
     DEEPSEEK_BASE_URL: str = "https://api.deepseek.com/v1"
+
+    # Vector Search
+    CHROMA_PERSIST_DIR: str = "./chroma_db"
+    VECTOR_SIMILARITY_THRESHOLD: float = 0.7
+    VECTOR_SEARCH_TOP_K: int = 3
 
     # Quiz Generation
     QUIZ_MAX_COUNT: int = 50

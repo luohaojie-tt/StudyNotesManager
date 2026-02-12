@@ -2,10 +2,12 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import VARCHAR, Boolean, Column, DateTime, String
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+from sqlalchemy import VARCHAR, Boolean, Column, DateTime, String, JSON
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 from app.core.database import Base
+
 
 
 class User(Base):
@@ -39,7 +41,16 @@ class User(Base):
     last_login_at = Column(DateTime, nullable=True)
 
     # Metadata (using user_data to avoid SQLAlchemy reserved word)
-    user_data = Column(JSONB, default=dict)
+    # Use JSON instead of JSONB for SQLite compatibility
+    user_data = Column(JSON, default=dict)
+
+    # Relationships
+    notes = relationship("Note", back_populates="user")
+    mindmaps = relationship("Mindmap", back_populates="user")
+    quizzes = relationship("Quiz", back_populates="user")
+    mistakes = relationship("Mistake", back_populates="user")
+    categories = relationship("Category", back_populates="user")
+    note_shares = relationship("NoteShare", back_populates="user")
 
     def __repr__(self):
         return f"<User {self.email}>"

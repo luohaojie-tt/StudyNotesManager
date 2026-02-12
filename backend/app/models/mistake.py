@@ -2,8 +2,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, Boolean
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, Boolean, JSON
+from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -21,14 +21,15 @@ class Mistake(Base):
     # Question content (snapshot, prevents modification issues)
     question_text = Column(Text, nullable=False)
     question_type = Column(String(20), nullable=False)
-    options = Column(JSONB, nullable=True)
+    options = Column(JSON, nullable=True)  # JSON instead of JSONB for SQLite compatibility
     correct_answer = Column(Text, nullable=False)
 
     # User's wrong answer
     user_answer = Column(Text, nullable=False)
 
     # Tags and categories
-    tags = Column(ARRAY(String), nullable=True)
+    # Use JSON instead of ARRAY for SQLite compatibility
+    tags = Column(JSON, nullable=True)
     category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True)
     knowledge_point_id = Column(UUID(as_uuid=True), ForeignKey("mindmap_knowledge_points.id"), nullable=True)
 
@@ -44,6 +45,7 @@ class Mistake(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
+    user = relationship("User")
     reviews = relationship("MistakeReview", back_populates="mistake", cascade="all, delete-orphan")
 
     def __repr__(self):
