@@ -15,33 +15,44 @@ class Mistake(Base):
     __tablename__ = "mistakes"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     question_id = Column(UUID(as_uuid=True), ForeignKey("quiz_questions.id", ondelete="CASCADE"), nullable=True)
+    quiz_id = Column(UUID(as_uuid=True), ForeignKey("quizzes.id", ondelete="SET NULL"), nullable=True)
 
     # Question content (snapshot, prevents modification issues)
-    question_text = Column(Text, nullable=False)
+    question = Column(Text, nullable=False)  # Changed from question_text to match schema
     question_type = Column(String(20), nullable=False)
     options = Column(JSON, nullable=True)  # JSON instead of JSONB for SQLite compatibility
     correct_answer = Column(Text, nullable=False)
 
     # User's wrong answer
     user_answer = Column(Text, nullable=False)
+    explanation = Column(Text, nullable=True)
 
     # Tags and categories
-    # Use JSON instead of ARRAY for SQLite compatibility
-    tags = Column(JSON, nullable=True)
-    category_id = Column(UUID(as_uuid=True), ForeignKey("categories.id"), nullable=True)
-    knowledge_point_id = Column(UUID(as_uuid=True), ForeignKey("mindmap_knowledge_points.id"), nullable=True)
+    subject = Column(String(100), nullable=False)  # Added for categorization
+    knowledge_points = Column(JSON, nullable=True, default=list)  # Changed from knowledge_point_id to array
+    tags = Column(JSON, nullable=True, default=list)
+    difficulty = Column(Integer, nullable=False, default=1)
+    source = Column(String(200), nullable=True)
 
-    # Related note
-    related_note_id = Column(UUID(as_uuid=True), ForeignKey("notes.id"), nullable=True)
-    related_note_snippet = Column(Text, nullable=True)
+    # Related note (for context)
+    related_note_id = Column(UUID(as_uuid=True), ForeignKey("notes.id", ondelete="SET NULL"), nullable=True)
 
-    # Statistics
-    mistake_count = Column(Integer, default=1)
-    last_mistake_at = Column(DateTime, default=datetime.utcnow)
+    # Mastery and review tracking
+    mastery_level = Column(Integer, default=0)  # 0-100
+    review_count = Column(Integer, default=0)
+    correct_count = Column(Integer, default=0)
+    incorrect_count = Column(Integer, default=0)
+    consecutive_correct = Column(Integer, default=0)
+    last_review_at = Column(DateTime, nullable=True)
+    next_review_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
-    created_at = Column(DateTime, default=datetime.utcnow)
+    # Archive support
+    is_archived = Column(Boolean, default=False, nullable=False)
+
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships

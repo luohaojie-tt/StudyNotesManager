@@ -230,7 +230,7 @@ class TestMindmapService:
         mock_result = MagicMock()
         mock_result.scalar_one_or_none.return_value = mock_mindmap
         mock_db.execute.return_value = mock_result
-        mock_db.delete = MagicMock()
+        mock_db.delete = AsyncMock()
         mock_db.commit = AsyncMock()
 
         with patch.object(MindmapService, '__init__', lambda self, db: None):

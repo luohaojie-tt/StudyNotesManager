@@ -69,7 +69,7 @@ class DeepSeekService:
         data: Dict[str, Any],
         max_retries: int = 3,
     ) -> Dict[str, Any]:
-        """Make API request with retry logic.
+        """Make API request with retry logic and rate limiting.
 
         Args:
             endpoint: API endpoint
@@ -82,6 +82,11 @@ class DeepSeekService:
         Raises:
             httpx.HTTPError: If request fails after retries
         """
+        # Apply rate limiting
+        from app.utils.rate_limiter import get_deepseek_rate_limiter
+        rate_limiter = get_deepseek_rate_limiter()
+        await rate_limiter.acquire()
+
         for attempt in range(max_retries):
             try:
                 response = await self.client.post(endpoint, json=data)

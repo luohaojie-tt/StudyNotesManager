@@ -253,16 +253,27 @@ class QuizGradingService:
         if user_normalized == correct_normalized:
             return {"is_correct": True}
 
-        # Check if user answer contains key terms
-        correct_keywords = correct_normalized.split()
-        user_keywords = user_normalized.split()
+        # Tokenize and remove common stopwords for better matching
+        stopwords = {"the", "a", "an", "is", "are", "was", "were", "of", "in", "on", "at", "to"}
+        user_tokens = [w for w in user_normalized.split() if w not in stopwords]
+        correct_tokens = [w for w in correct_normalized.split() if w not in stopwords]
 
-        # Calculate keyword overlap
-        matches = sum(1 for kw in correct_keywords if kw in user_normalized)
-        match_ratio = matches / len(correct_keywords) if correct_keywords else 0
+        if not user_tokens or not correct_tokens:
+            # Fallback to simple matching if no tokens after stopwords
+            user_tokens = user_normalized.split()
+            correct_tokens = correct_normalized.split()
 
-        # Consider correct if 70%+ keyword match
-        is_correct = match_ratio >= 0.7
+        # Bidirectional matching: correct->user AND user->correct
+        correct_in_user = sum(1 for kw in correct_tokens if kw in user_normalized)
+        user_in_correct = sum(1 for kw in user_tokens if kw in correct_normalized)
+
+        # Calculate combined match ratio
+        total_matches = correct_in_user + user_in_correct
+        total_unique = len(correct_tokens) + len(user_tokens)
+        match_ratio = total_matches / total_unique if total_unique > 0 else 0
+
+        # Consider correct if 50%+ keyword match (lenient for fill-in-blank)
+        is_correct = match_ratio >= 0.5
 
         return {
             "is_correct": is_correct,
