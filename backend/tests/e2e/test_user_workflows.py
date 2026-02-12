@@ -4,7 +4,7 @@ E2E tests for user workflows using Playwright.
 These tests simulate complete user journeys through the application.
 """
 import pytest
-from playwright.async_api import async_page, Page
+from playwright.async_api import Page
 from tests.fixtures.test_data import valid_password, valid_email, valid_full_name, test_data
 
 

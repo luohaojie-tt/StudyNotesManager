@@ -47,13 +47,16 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || (
 **问题**: 使用`placeholder`绕过认证
 **修复**: 从认证context获取真实user ID
 
-### 5. 缺少CSRF保护
+### 5. ✅ 缺少CSRF保护 - 已完成
 
 **文件**: 所有POST请求
 **问题**: API请求缺少CSRF token
 **修复**:
-- 从cookie获取CSRF token
-- 添加到所有mutation请求headers
+- ✅ 从cookie获取CSRF token
+- ✅ 添加到所有mutation请求headers
+- ✅ 实施日期: 2026-02-09
+- ✅ 负责人: frontend-dev-3
+- **详细报告**: `docs/09-workflow/CSRF_PROTECTION_IMPLEMENTATION.md`
 
 ### 6. dangerouslySetInnerHTML使用
 
@@ -97,7 +100,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || (
 **问题**: URL参数直接使用未验证
 **修复**: 验证UUID格式
 
-### 5. 答案比较逻辑错误
+### 5. ✅ 答案比较逻辑错误 - 已完成
 
 **文件**: `frontend/src/components/quiz/QuizTakingInterface.tsx:125-127`
 **问题**: multiple-select类型答案比较逻辑不正确
@@ -105,19 +108,44 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || (
 ```typescript
 const getIsCorrect = (question: Question, answer: string): boolean => {
   if (question.type === 'multiple-select') {
-    const userAnswers = answer.split(',').map(a => a.trim()).sort()
-    const correctAnswers = question.correctAnswer.split(',').map(a => a.trim()).sort()
-    return JSON.stringify(userAnswers) === JSON.stringify(correctAnswers)
+    // For multiple-select, compare sorted arrays
+    const userAnswers = answer.split(',').map(a => a.trim()).filter(a => a)
+    const correctAnswers = question.correctAnswer.split(',').map(a => a.trim()).filter(a => a)
+    if (userAnswers.length !== correctAnswers.length) return false
+    const sortedUser = [...userAnswers].sort()
+    const sortedCorrect = [...correctAnswers].sort()
+    return sortedUser.every((val, idx) => val === sortedCorrect[idx])
   }
+  // For other types, use case-insensitive string comparison
   return answer.trim().toLowerCase() === question.correctAnswer.trim().toLowerCase()
 }
 ```
+**实施日期**: 2026-02-09
+**负责人**: frontend-dev-3
 
-### 6. QuizTimer依赖问题
+### 6. ✅ QuizTimer依赖问题 - 已完成
 
 **文件**: `frontend/src/components/quiz/QuizTimer.tsx:23-46`
 **问题**: 依赖数组包含`isWarning`和`onTimeUp`，可能导致无限循环
-**修复**: 使用ref存储回调
+**修复**:
+```typescript
+// Store callback in ref to prevent infinite loops
+const onTimeUpRef = useRef(onTimeUp)
+const hasTriggeredRef = useRef(false)
+
+// Update ref when callback changes
+useEffect(() => {
+  onTimeUpRef.current = onTimeUp
+}, [onTimeUp])
+
+// Remove onTimeUp and isWarning from dependency array
+useEffect(() => {
+  if (isPaused || timeLeft <= 0 || hasTriggeredRef.current) return
+  // ... timer logic
+}, [timeLeft, isPaused, isWarning])
+```
+**实施日期**: 2026-02-09
+**负责人**: frontend-dev-3
 
 ---
 

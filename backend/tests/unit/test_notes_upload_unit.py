@@ -13,7 +13,7 @@ from tests.fixtures.test_data import valid_password, valid_email, valid_full_nam
 class TestNoteModel:
     """Test Note model."""
 
-    test_note_model_has_required_fields(self, valid_password):
+    def test_note_model_has_required_fields(self, valid_password):
         """Test that Note model has all required fields."""
         from app.models.note import Note
         
@@ -30,14 +30,14 @@ class TestNoteModel:
         for field in required_fields:
             assert field in columns, f"Missing field: {field}"
     
-    test_note_model_has_tags_field(self, valid_password):
+    def test_note_model_has_tags_field(self, valid_password):
         """Test that Note model has tags field."""
         from app.models.note import Note
         
         assert 'tags' in Note.__table__.columns.keys()
         assert Note.__table__.columns['tags'].type.__class__.__name__ == 'ARRAY'
     
-    test_note_model_has_is_favorited_field(self, valid_password):
+    def test_note_model_has_is_favorited_field(self, valid_password):
         """Test that Note model has is_favorited field."""
         from app.models.note import Note
         
@@ -52,7 +52,7 @@ class TestNoteModel:
 class TestNoteSchemas:
     """Test Note schemas."""
 
-    test_note_create_schema(self, valid_password):
+    def test_note_create_schema(self, valid_password):
         """Test NoteCreate schema."""
         from app.schemas.note import NoteCreate
         
@@ -68,7 +68,7 @@ class TestNoteSchemas:
         assert schema.tags == ["tag1", "tag2"]
         assert schema.meta_data == {"key": "value"}
     
-    test_note_response_schema(self, valid_password):
+    def test_note_response_schema(self, valid_password):
         """Test NoteResponse schema."""
         from app.schemas.note import NoteResponse
         
@@ -93,7 +93,7 @@ class TestNoteSchemas:
         assert schema.is_favorited == False
         assert schema.tags == ["tag1", "tag2"]
     
-    test_ocr_response_schema(self, valid_password):
+    def test_ocr_response_schema(self, valid_password):
         """Test OCRResponse schema."""
         from app.schemas.note import OCRResponse
         
@@ -107,7 +107,7 @@ class TestNoteSchemas:
 class TestNoteService:
     """Test NoteService."""
 
-    async test_note_service_create_note(self, valid_password):
+    async def test_note_service_create_note(self, valid_password):
         """Test creating a note through NoteService."""
         from app.services.note_service import NoteService
         from app.schemas.note import NoteCreate
@@ -134,7 +134,7 @@ class TestNoteService:
 class TestNotesAPI:
     """Test notes API endpoints."""
 
-    test_notes_router_exists(self, valid_password):
+    def test_notes_router_exists(self, valid_password):
         """Test that notes router exists and has routes."""
         from app.api.notes import router
         
@@ -144,7 +144,7 @@ class TestNotesAPI:
         assert '/api/notes/ocr' in routes
         assert '/api/notes' in routes
     
-    test_upload_endpoint_signature(self, valid_password):
+    def test_upload_endpoint_signature(self, valid_password):
         """Test that upload endpoint has correct signature."""
         from app.api.notes import router
         
@@ -163,14 +163,14 @@ class TestNotesAPI:
 class TestFileValidation:
     """Test file validation logic."""
 
-    test_file_size_validation(self, valid_password):
+    def test_file_size_validation(self, valid_password):
         """Test file size validation logic."""
         from app.core.config import settings
         
         max_size = settings.MAX_UPLOAD_SIZE
         assert max_size == 10485760  # 10MB
     
-    test_allowed_extensions(self, valid_password):
+    def test_allowed_extensions(self, valid_password):
         """Test allowed file extensions."""
         from app.core.config import settings
         

@@ -68,7 +68,7 @@ class TestJWTToken:
         # JWT should have 3 parts separated by dots
         assert token.count(".") == 2
 
-    test_create_access_token_custom_expiration(self, valid_password):
+    def test_create_access_token_custom_expiration(self, valid_password):
         """Test JWT access token creation with custom expiration."""
         from app.utils.jwt import create_access_token, verify_access_token
 
@@ -80,7 +80,7 @@ class TestJWTToken:
         assert "exp" in payload
         assert payload["type"] == "access"
 
-    test_create_refresh_token(self, valid_password):
+    def test_create_refresh_token(self, valid_password):
         """Test JWT refresh token creation."""
         from app.utils.jwt import create_refresh_token, verify_refresh_token
 
@@ -92,7 +92,7 @@ class TestJWTToken:
         assert "exp" in payload
         assert payload["type"] == "refresh"
 
-    test_verify_access_token_valid(self, valid_password):
+    def test_verify_access_token_valid(self, valid_password):
         """Test verification of valid access token."""
         from app.utils.jwt import create_access_token, verify_access_token
 
@@ -104,7 +104,7 @@ class TestJWTToken:
         assert "exp" in payload
         assert payload["type"] == "access"
 
-    test_verify_refresh_token_valid(self, valid_password):
+    def test_verify_refresh_token_valid(self, valid_password):
         """Test verification of valid refresh token."""
         from app.utils.jwt import create_refresh_token, verify_refresh_token
 
@@ -116,7 +116,7 @@ class TestJWTToken:
         assert "exp" in payload
         assert payload["type"] == "refresh"
 
-    test_verify_token_invalid(self, valid_password):
+    def test_verify_token_invalid(self, valid_password):
         """Test verification of invalid token."""
         from app.utils.jwt import verify_access_token
 
@@ -125,7 +125,7 @@ class TestJWTToken:
         with pytest.raises(JWTError):
             verify_access_token(invalid_token)
 
-    test_verify_token_wrong_type(self, valid_password):
+    def test_verify_token_wrong_type(self, valid_password):
         """Test that access token verification rejects refresh tokens."""
         from app.utils.jwt import create_refresh_token, verify_access_token
 
@@ -135,7 +135,7 @@ class TestJWTToken:
         with pytest.raises(JWTError, match="Invalid token type"):
             verify_access_token(refresh_token)
 
-    test_token_expiration(self, valid_password):
+    def test_token_expiration(self, valid_password):
         """Test that token includes expiration."""
         import time
         from app.utils.jwt import create_access_token, verify_access_token
@@ -452,7 +452,7 @@ class TestAuthService:
 class TestAuthSchemas:
     """Test authentication schemas validation."""
 
-    test_user_register_valid(self, valid_password):
+    def test_user_register_valid(self, valid_password):
         """Test valid user registration schema."""
         from app.schemas.auth import UserRegister
 
@@ -466,7 +466,7 @@ class TestAuthSchemas:
         assert user_data.password == "SecurePass123"
         assert user_data.full_name == "Test User"
 
-    test_user_register_password_too_short(self, valid_password):
+    def test_user_register_password_too_short(self, valid_password):
         """Test password validation fails for short passwords."""
         from pydantic import ValidationError
         from app.schemas.auth import UserRegister
@@ -478,7 +478,7 @@ class TestAuthSchemas:
                 full_name="Test User"
             )
 
-    test_user_register_password_no_letters(self, valid_password):
+    def test_user_register_password_no_letters(self, valid_password):
         """Test password validation fails for passwords without letters."""
         from pydantic import ValidationError
         from app.schemas.auth import UserRegister
@@ -490,7 +490,7 @@ class TestAuthSchemas:
                 full_name="Test User"
             )
 
-    test_user_register_password_no_digits(self, valid_password):
+    def test_user_register_password_no_digits(self, valid_password):
         """Test password validation fails for passwords without digits."""
         from pydantic import ValidationError
         from app.schemas.auth import UserRegister
@@ -502,7 +502,7 @@ class TestAuthSchemas:
                 full_name="Test User"
             )
 
-    test_user_login_valid(self, valid_password):
+    def test_user_login_valid(self, valid_password):
         """Test valid user login schema."""
         from app.schemas.auth import UserLogin
 
@@ -514,7 +514,7 @@ class TestAuthSchemas:
         assert login_data.email == "test@example.com"
         assert login_data.password == "SecurePass123"
 
-    test_user_response_model(self, valid_password):
+    def test_user_response_model(self, valid_password):
         """Test user response schema."""
         from app.schemas.auth import UserResponse
         from datetime import datetime
